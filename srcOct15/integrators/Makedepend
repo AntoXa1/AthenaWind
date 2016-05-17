@@ -1,0 +1,49 @@
+integrate.o: integrate.c ../copyright.h ../defs.h ../athena.h \
+  prototypes.h ../config.h ../prototypes.h ../gravity/prototypes.h \
+  ../microphysics/prototypes.h ../particles/prototypes.h \
+  ../reconstruction/prototypes.h ../rsolvers/prototypes.h
+integrate_1d_ctu.o: integrate_1d_ctu.c ../copyright.h ../defs.h \
+  ../athena.h ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
+integrate_2d_ctu.o: integrate_2d_ctu.c ../copyright.h ../defs.h \
+  ../athena.h ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
+integrate_3d_ctu.o: integrate_3d_ctu.c ../copyright.h ../defs.h \
+  ../athena.h ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
+integrate_1d_vl.o: integrate_1d_vl.c ../copyright.h ../defs.h ../athena.h \
+  ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
+integrate_2d_vl.o: integrate_2d_vl.c ../copyright.h ../defs.h ../athena.h \
+  ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
+integrate_3d_vl.o: integrate_3d_vl.c ../copyright.h ../defs.h ../athena.h \
+  ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
+integrate_1d_vl_sr.o: integrate_1d_vl_sr.c ../copyright.h ../defs.h \
+  ../athena.h ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
+integrate_2d_vl_sr.o: integrate_2d_vl_sr.c ../copyright.h ../defs.h \
+  ../athena.h ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
+integrate_3d_vl_sr.o: integrate_3d_vl_sr.c ../copyright.h ../defs.h \
+  ../athena.h ../globals.h prototypes.h ../config.h ../prototypes.h \
+  ../gravity/prototypes.h ../microphysics/prototypes.h \
+  ../particles/prototypes.h ../reconstruction/prototypes.h \
+  ../rsolvers/prototypes.h
