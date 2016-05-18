@@ -1,4 +1,5 @@
-#!/Applications/Canopy64.app/appdata/canopy-1.5.1.2730.macosx-x86_64/Canopy.app/Contents/bin/python
+#!/local/data/atorus1/dora/Compilers/epd-7.3-1-rh5-x86_64(1)/bin/python
+
 import subprocess as subproc
 import sys
 
@@ -8,14 +9,28 @@ caseToDo = 'torus_mhd'
 # caseToDo = 'hkdisk_hd'
 
 #./configure --with-coord=cylindrical --with-problem=cylwindrotb
-PATH = "/Users/dora/WORK/ECLIPSE_SPACE/AthenaWind"
+
+PATH_BASE='/Users/dora/WORK/ECLIPSE_SPACE/'
+PATH_BASE = "/Users/dora/WORK/ECLIPSE_SPACE/AthenaWind"
+
+import socket
+name=socket.gethostname()
+
+if name == 'atorus':
+    PATH_BASE = '/local/data/atorus1/dora/PROJECTS'
+
+if name == 'Antons-MacBook-Pro.local':
+    PATH_BASE = "/Users/dora/WORK/ECLIPSE_SPACE"
+
+PATH = PATH_BASE + '/AthenaWind/'
+
+print("current Path: ",  PATH)
 
 
 if caseToDo == '1':    
     problemToConfig = '--with-problem=cylwindrot'
     methodGasOrMHD =  '--with-gas=hydro'
-    inputFile = '../tst/cylindrical/athinput.cylwindrot-3D'
-    
+    inputFile = '../tst/cylindrical/athinput.cylwindrot-3D'    
 
 if caseToDo == '2':    
     problemToConfig = '--with-problem=cylwindrotb'
@@ -52,9 +67,21 @@ if caseToDo == 'torus_mhd':
     
     inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
 
+
+ 
 subproc.check_call(['rm', '-f', './bin/*.bin'])
 
-subproc.check_call(['/Users/dora/WORK/ECLIPSE_SPACE/AthenaWind/./configure', '--with-coord=cylindrical',methodGasOrMHD, problemToConfig])
-subproc.check_call(['make', 'clean'])
-subproc.check_call(['make', 'all', 'MACHINE=macosx'])
-subproc.check_call(['./athena', '-i', inputFile],  cwd = './bin' )
+
+compLev = '3'
+
+if '0' in compLev:
+    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',methodGasOrMHD, problemToConfig])
+
+if '1' in compLev:
+    subproc.check_call(['make', 'clean'])
+
+if '2' in compLev:
+    subproc.check_call(['make', 'all', 'MACHINE=macosx'])
+
+if '3' in compLev:
+    subproc.check_call(['./athena', '-i', inputFile],  cwd = './bin' )
