@@ -17,7 +17,7 @@
 #include "globals.h"
 #include "prototypes.h"
 
-
+static void inX1BoundCond(GridS *pGrid);
 void plot(MeshS *pM, char name[16]);
 void optDepthFunctions(MeshS *pM);
 Real updateEnergyFromXrayHeatCool(const Real dens, const Real Press, const Real dt, const Real xi_in, int whatToDo);
@@ -294,7 +294,7 @@ Real updateEnergyFromXrayHeatCool(const Real dens, const Real Press, const Real 
 //	 Tg = fabs( Press * Esc * M_MW) / (dens*Dsc*RGAS );
 //	 if(xi_in>100.) printf("%e %e %e %e %e %e \n", Hx, dens, Press,Pnew, Tg, xi_in);
 
-	 Hx = 0.;
+//	 Hx = 0.;
 	 return(-Hx); /* returns cooling not heating rate */
 
 }
@@ -317,9 +317,11 @@ void xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
 
 	Tg = fabs( Press * Esc * M_MW) / (dens*Dsc*RGAS );
 
+
+
 //	 return(Press/Gamma_1);
 //  egas = Evir0 * eij
-//  Tg = abs( (gam -1.)*m_mw *egas/ (nd* nc0*m_u) /Rgas )
+//  Tg = fabs( (gam -1.)*m_mw *egas/ (nd* nc0*m_u) /Rgas )
 
 	xi = xi_in;
 
@@ -342,7 +344,7 @@ void xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
 		 lbr2 =  ( al1*exp(-al2/Tgmin)*( pow(xi,bta) ) /sqrt(Tgmin)+1.e-24)*delt;
 	 }
 
-	 lbr2 = 0.;
+//	 lbr2 = 0.;
 
 	 Lbr=lbr1 + lbr2; //(erg cm^3/s)
 
@@ -356,9 +358,9 @@ void xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
 	 *Hx = Gc +Gx -Lbr;
 
 
-     dGcdT = - 4.*c1*xi;
-     dGxdT = - 0.5*c2/Tx * pow(xi,0.25) *(Tx/Tg+1.)*pow (Tg, -0.5);
-     dLbrdT = 0.5* al0 *pow(Tg,-0.5) + delt*al1*pow(xi,bta) *exp(-al2/Tg)*
+	 dGcdT = - 4.*c1*xi;
+	 dGxdT = - 0.5*c2/Tx * pow(xi,0.25) *(Tx/Tg+1.)*pow (Tg, -0.5);
+	 dLbrdT = 0.5* al0 *pow(Tg,-0.5) + delt*al1*pow(xi,bta) *exp(-al2/Tg)*
                  ( al2 -  0.5* Tg  )  * pow(Tg,-2.5);
 	 *dHxdT = dGcdT + dGxdT - dLbrdT;
 	 dHxde = *dHxdT*Gamma_1*M_MW*Evir0/Dsc/RGAS/Lamd0 * dens * pow( nc0, 2);
@@ -371,8 +373,12 @@ void xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
 //	 printf("%e %e %e %e \n", dens, Press, Tg, xi);
 
 	 if(isnan(*Hx)){
-		 printf("Hx or/and Cx is nan %e %e %e %e \n", dens, Press, Tg, xi); apause();
+		 printf("Hx or/and Cx is nan %e %e %e %e \n", dens, Press, Tg, xi);
+		 *Hx = 0.;//		 apause();
+		 return;
 	 }
+
+	 *Hx = 0.;
 
 //	 *Hx = (Tg < Tx) ? *Hx : 0.;
 //	 printf("%e %e %e %e %e \n", Hx, Tg, xi, dens, Press);
@@ -522,11 +528,13 @@ void problem(DomainS *pDomain)
   GridS *pG=(pDomain->Grid);
 
   CoolingFunc = updateEnergyFromXrayHeatCool;
+//apause();
+
 
   int i,j,k;
   int is,ie,js,je,ks,ke,nx1,nx2,nx3;
   int il,iu,jl,ju,kl,ku;
-  Real rad, IntE, KinE, MagE, rbnd;
+  Real rad, IntE, KinE, MagE, rbnd, dz;
   Real x1,x2,x3, x1i, x2i, x3i,rhoa;
   Real Pgas, Pb, TotPgas, TotPb;
   Real scl, ***Ap, ***Bri, ***Bzi;
@@ -600,7 +608,11 @@ printf("R0 = %e * R_g \n", r0);
     	Dsc = nc0*M_MW*	M_U;
 //    	printf( " %e %e %e %e\n", Dsc, nc0, M_MW, M_U);
 
-    	xm =1.;
+    	Real Tg = fabs( Gamma_1*M_MW *e0/ (rho0*Dsc) /RGAS );
+	printf(" %e \n", Tg); //apause();
+
+
+	xm =1.;
 //    	r_in *= xm;
 
    	Rsc = xm* r0;
@@ -667,9 +679,11 @@ printf("R0 = %e * R_g \n", r0);
 
         //----------------------------
 
-           pG->U[k][j][i].M2 = rho0 * rad/pow(rad-rgToR0,2);
+           pG->U[k][j][i].M2 = rho0 * sqrt(rad)/(rad-rgToR0);
+
 //        pG->U[k][j][i].M2 = VP(x1)*rho0;
-//        pG->U[k][j][i].M2 = 0.;
+
+//        pG->U[k][j][i].M2 = 0.0;
 
         //----------------------------
 
@@ -768,10 +782,21 @@ printf("R0 = %e * R_g \n", r0);
         // Bz = (1/R)*d(R*Ap)/dr
         pG->B3i[k][j][i] = (Ap[k][j][i+1]*(x1i+pG->dx1) - Ap[k][j][i]*x1i)/(x1*pG->dx1);
 
+        //Bt = d(Ap)/dz - d(Ap)/dr
+        pG->B1i[k][j][i] = 0.;
+        pG->B3i[k][j][i] = 0.;
+
+        dz =  copysign(pG->dx3, x3);
+        pG->B2i[k][j][i] = fabs( ( Ap[k+1][j][i] - Ap[k][j][i])/dz  - (Ap[k][j][i+1] - Ap[k][j][i])/pG->dx1);
+
+//        if ( pG->B2i[k][j][i] != 0. ){
+//        		printf("%f %f\n", Ap[k+1][j][i],  Ap[k][j][i] ); // pG->B2i[k][j][i]);
+//        }
+
       }
     }
   }
-
+//apause();
   // Calculate cell centered fields
   for (k=kl; k<=ku; k++) {
     for (j=jl; j<=ju; j++) {
@@ -785,10 +810,17 @@ printf("R0 = %e * R_g \n", r0);
 
           pG->U[k][j][i].B1c = 0.5*((x1-0.5*pG->dx1)*pG->B1i[k][j][i] + (x1+0.5*pG->dx1)*pG->B1i[k][j][i+1])/x1;
 
+
+        if (j==ju)
+          pG->U[k][j][i].B2c = pG->B2i[k][j][i];
+        else
+          pG->U[k][j][i].B2c = 0.5*(pG->B2i[k][j+1][i] + pG->B2i[k][j][i]);
+
+
+
         if (k==ku)
           pG->U[k][j][i].B3c = pG->B3i[k][j][i];
         else
-
           pG->U[k][j][i].B3c = 0.5*(pG->B3i[k+1][j][i] + pG->B3i[k][j][i]);
 
 //        printf("B1c, B2c, B3c %E %E %E \n", pG->U[k][j][i].B1c, pG->U[k][j][i].B2c, pG->U[k][j][i].B3c);
@@ -888,6 +920,8 @@ printf("R0 = %e * R_g \n", r0);
 
   StaticGravPot = grav_pot;
 
+  bvals_mhd_fun(pDomain, left_x1,  inX1BoundCond );
+
 
 //  for (k=kl; k<=ku; k++) {
 //    for (j=jl; j<=ju; j++) {
@@ -959,8 +993,11 @@ void problem_read_restart(MeshS *pM, FILE *fp)
 //  x1GravAcc = grav_acc;
 
 
+
+
 //  set_bvals_fun(left_x1,disk_ir_bc);
 //  set_bvals_fun(right_x1,disk_or_bc);
+
 //  set_bvals_fun(left_x3,diode_outflow_ix3);
 //  set_bvals_fun(right_x3,diode_outflow_ox3);
 
@@ -1016,6 +1053,8 @@ void Userwork_in_loop (MeshS *pM)
 
 optDepthFunctions(pM);
 
+
+
 //plot(pM, "d");
 //plot(pM, "tau");
 //plot(pM, "xi");
@@ -1039,8 +1078,8 @@ optDepthFunctions(pM);
 
 
         if (isnan(pG->U[k][j][i].d) || isnan(pG->U[k][j][i].E)) {
-          printf("At pos (%f,%f,%f), Den = %f, E = %f\n", x1,x2,x3,pG->U[k][j][i].d, pG->U[k][j][i].E);
-
+          printf("At pos (%d,%d,%d) (%f,%f,%f), Den = %f, E = %f\n", i, j, k, x1,x2,x3,pG->U[k][j][i].d, pG->U[k][j][i].E);
+          apause();
           pG->U[k][j][i].d = rho0;
         }
 
@@ -1367,3 +1406,61 @@ Real rtsafe_energy_eq(Real Press, Real dens, Real xi, Real dt, int* status)
 //        end if
 //
 //} //end  traceCell
+static void inX1BoundCond(GridS *pGrid)
+{
+  int is = pGrid->is;
+  int js = pGrid->js, je = pGrid->je;
+  int ks = pGrid->ks, ke = pGrid->ke;
+  int i,j,k;
+
+
+
+#ifdef MHD
+  int ju, ku; /* j-upper, k-upper */
+#endif
+
+  for (k=ks; k<=ke; k++) {
+    for (j=js; j<=je; j++) {
+      for (i=1; i<=nghost; i++) {
+    	    pGrid->U[k][j][is-i] = pGrid->U[k][j][is];
+
+    	    if (pGrid->U[k][j][is].M1 > 0.) {
+        		pGrid->U[k][j][is-i].M1 = 0.;
+        }
+
+
+      }
+    }
+  }
+
+#ifdef MHD
+/* B1i is not set at i=is-nghost */
+  for (k=ks; k<=ke; k++) {
+    for (j=js; j<=je; j++) {
+      for (i=1; i<=nghost-1; i++) {
+        pGrid->B1i[k][j][is-i] = pGrid->B1i[k][j][is];
+      }
+    }
+  }
+
+  if (pGrid->Nx[1] > 1) ju=je+1; else ju=je;
+  for (k=ks; k<=ke; k++) {
+    for (j=js; j<=ju; j++) {
+      for (i=1; i<=nghost; i++) {
+        pGrid->B2i[k][j][is-i] = pGrid->B2i[k][j][is];
+      }
+    }
+  }
+
+  if (pGrid->Nx[2] > 1) ku=ke+1; else ku=ke;
+  for (k=ks; k<=ku; k++) {
+    for (j=js; j<=je; j++) {
+      for (i=1; i<=nghost; i++) {
+        pGrid->B3i[k][j][is-i] = pGrid->B3i[k][j][is];
+      }
+    }
+  }
+#endif /* MHD */
+
+  return;
+}
