@@ -56,18 +56,7 @@ if caseToDo == 'hkdisk_hd':
     problemToConfig = '--with-problem=hkdisk'
     methodGasOrMHD =  '--with-gas=hydro'
     inputFile = '../tst/cylindrical/athinput.hkdisk-3D' 
-
-
-if caseToDo == 'torus_hd':    
-    problemToConfig = '--with-problem=torus9'
-    methodGasOrMHD =  '--with-gas=hydro'    
-    inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
-
-if caseToDo == 'torus_mhd':    
-    problemToConfig = '--with-problem=torus9'
-
-    methodGasOrMHD =  '--with-gas=mhd'
-    solverType  = '--with-flux=hlld'
+erType  = '--with-flux=hlld'
     inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
     
 
