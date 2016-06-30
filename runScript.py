@@ -63,13 +63,13 @@ erType  = '--with-flux=hlld'
  
 subproc.check_call(['rm', '-f', './bin/*.bin'])
 
-
+METHOD = '--with-flux=hlld'
 compLev = '0123'
 
 #compLev = '123'
 
 if '0' in compLev:
-    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',methodGasOrMHD, '--with-flux=hlld', problemToConfig])
+    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',methodGasOrMHD, METHOD, problemToConfig])
 
 if '1' in compLev:
     subproc.check_call(['make', 'clean'])
