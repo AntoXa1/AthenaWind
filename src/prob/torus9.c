@@ -521,6 +521,7 @@ VOutFun_t get_usr_out_fun(const char *name)
 
 //#define VP(R) pow(xm,q)*pow(R, 1.-q)
 
+
 #define VP(R) pow(R/xm, 1.-q)
 
 void problem(DomainS *pDomain)
@@ -539,6 +540,16 @@ void problem(DomainS *pDomain)
   Real Pgas, Pb, TotPgas, TotPb;
   Real scl, ***Ap, ***Bri, ***Bzi;
   Real divB=0.0, maxdivB=0.0;
+
+
+//  ------------------------------
+//  Soloviev solution
+
+  Real Psi_Sol,a1_Sol, a2_Sol,b1_Sol;
+
+
+ //  ------------------------------
+
 
   int my_id;
 
@@ -783,15 +794,35 @@ printf("R0 = %e * R_g \n", r0);
         pG->B3i[k][j][i] = (Ap[k][j][i+1]*(x1i+pG->dx1) - Ap[k][j][i]*x1i)/(x1*pG->dx1);
 
         //Bt = d(Ap)/dz - d(Ap)/dr
-        pG->B1i[k][j][i] = 0.;
-        pG->B3i[k][j][i] = 0.;
+//        pG->B1i[k][j][i] = 0.;
+//        pG->B3i[k][j][i] = 0.;
 
         dz =  copysign(pG->dx3, x3);
-        pG->B2i[k][j][i] = fabs( ( Ap[k+1][j][i] - Ap[k][j][i])/dz  - (Ap[k][j][i+1] - Ap[k][j][i])/pG->dx1);
+
+//        pG->B2i[k][j][i] = fabs( ( Ap[k+1][j][i] - Ap[k][j][i])/dz  - (Ap[k][j][i+1] - Ap[k][j][i])/pG->dx1);
 
 //        if ( pG->B2i[k][j][i] != 0. ){
 //        		printf("%f %f\n", Ap[k+1][j][i],  Ap[k][j][i] ); // pG->B2i[k][j][i]);
 //        }
+
+
+
+
+//         Psi_Sol= a2_Sol*pow(-1 + pow(x1i,2),2) + (b1_Sol + a1*(-1 + pow(x1i,2)))*pow(x3i,2);
+//
+        a1_Sol = 1.;
+	    a2_Sol = 1.;
+		b1_Sol = 3.;
+
+
+
+        pG->B1i[k][j][i] = (-2*(b1_Sol + a1_Sol*(-1 + pow(x1i,2)))*x3i)/x1i;   //Bx
+
+         pG->B3i[k][j][i] =4*a2_Sol*(-1 + pow(x1i,2)) + 2*a1_Sol*pow(x3i,2); //Bz
+
+
+
+
 
       }
     }
