@@ -525,7 +525,9 @@ int main(int argc, char *argv[])
       for (nl=0; nl<(Mesh.NLevels); nl++){ 
         for (nd=0; nd<(Mesh.DomainsPerLevel[nl]); nd++){  
           if (Mesh.Domain[nl][nd].Grid != NULL){
+
             bvals_mhd(&(Mesh.Domain[nl][nd]));
+
           }
       }}
 #ifdef STATIC_MESH_REFINEMENT

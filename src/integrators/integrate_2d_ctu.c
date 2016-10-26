@@ -311,11 +311,19 @@ void integrate_2d_ctu(DomainS *pD)
  * Add source terms from optically-thin cooling for 0.5*dt to L/R states
  */
 
+
+
 #ifndef BAROTROPIC
     if (CoolingFunc != NULL){
       for (i=il+1; i<=iu; i++) {
+
+#ifdef XRAYS
         coolfl = (*CoolingFunc)(Wl[i].d,Wl[i].P,(0.5*pG->dt), pG->xi[ks][j][i], KEY_P);
         coolfr = (*CoolingFunc)(Wr[i].d,Wr[i].P,(0.5*pG->dt), pG->xi[ks][j][i], KEY_P );
+#else
+        coolfl = (*CoolingFunc)(Wl[i].d,Wl[i].P,(0.5*pG->dt));
+        coolfr = (*CoolingFunc)(Wr[i].d,Wr[i].P,(0.5*pG->dt));
+#endif
 
         Wl[i].P -= 0.5*pG->dt*Gamma_1*coolfl;
         Wr[i].P -= 0.5*pG->dt*Gamma_1*coolfr;
@@ -610,11 +618,17 @@ void integrate_2d_ctu(DomainS *pD)
  * Add source terms from optically-thin cooling for 0.5*dt to L/R states
  */
 
+
 #ifndef BAROTROPIC
     if (CoolingFunc != NULL){
       for (j=jl+1; j<=ju; j++) {
+#ifdef XRAYS
         coolfl = (*CoolingFunc)(Wl[j].d,Wl[j].P,(0.5*pG->dt), pG->xi[ks][j][i], KEY_P);
         coolfr = (*CoolingFunc)(Wr[j].d,Wr[j].P,(0.5*pG->dt), pG->xi[ks][j][i], KEY_P);
+#else
+        coolfl = (*CoolingFunc)(Wl[j].d,Wl[j].P,(0.5*pG->dt));
+        coolfr = (*CoolingFunc)(Wr[j].d,Wr[j].P,(0.5*pG->dt));
+#endif
 
         Wl[j].P -= 0.5*pG->dt*Gamma_1*coolfl;
         Wr[j].P -= 0.5*pG->dt*Gamma_1*coolfr;
@@ -1855,7 +1869,12 @@ void integrate_2d_ctu(DomainS *pD)
   if (CoolingFunc != NULL){
     for (j=js; j<=je; j++){
       for (i=is; i<=ie; i++){
+
+#ifdef XRAYS
         coolf = (*CoolingFunc)(dhalf[j][i],phalf[j][i],pG->dt, pG->xi[ks][j][i],KEY_E);
+#else
+        coolf = (*CoolingFunc)(dhalf[j][i],phalf[j][i],pG->dt);
+#endif
         pG->U[ks][j][i].E -= pG->dt*coolf;
       }
     }

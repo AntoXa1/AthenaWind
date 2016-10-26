@@ -20,13 +20,13 @@
  *  (user modified via configure) */
 
 /* Version identifier when configure was last run */
-#define CONFIGURE_DATE "Fri May 13 14:39:05 JST 2016"
+#define CONFIGURE_DATE "Tue Oct 25 16:06:57 EDT 2016"
 
 /* Problem generator with which Athena is compiled */
 #define A_PROBLEM "torus9"
 
 /* radiation or not :: Anton */
-#define XRAYS
+/* #define XRAYS  */
 
 /* HYDRO or MHD */
 #define MHD
@@ -71,7 +71,7 @@
 /* flux type
  * ROE_FLUX, HLLE_FLUX, HLLC_FLUX, HLLD_FLUX, FORCE_FLUX, EXACT_FLUX,
  * TWO_SHOCK_FLUX */
-#define ROE_FLUX
+#define HLLD_FLUX
 
 /* unsplit integrator:
  * CTU_INTEGRATOR or VL_INTEGRATOR */

@@ -384,10 +384,14 @@ void integrate_3d_ctu(DomainS *pD)
       if (CoolingFunc != NULL){
         for (i=il+1; i<=iu; i++) {
         	 if ( isnan(Wl[i].P) || isnan( Wr[i].P) ) { printf("P_i is nan i %d  \n", i);getchar();}
-
+#ifdef XRAYS
           coolfl = (*CoolingFunc)(Wl[i].d,Wl[i].P,(0.5*pG->dt), pG->xi[k][j][i],  KEY_P);
-
           coolfr = (*CoolingFunc)(Wr[i].d,Wr[i].P,(0.5*pG->dt), pG->xi[k][j][i], KEY_P);
+#else
+          coolfl = (*CoolingFunc)(Wl[i].d,Wl[i].P,(0.5*pG->dt));
+          coolfr = (*CoolingFunc)(Wr[i].d,Wr[i].P,(0.5*pG->dt));
+#endif
+          if (coolfl != 0. || coolfr !=0.) printf("%f %f \n", coolfl, coolfr);
 
           Wl[i].P -= 0.5*pG->dt*Gamma_1*coolfl;
 
@@ -724,8 +728,15 @@ void integrate_3d_ctu(DomainS *pD)
 
         	if ( isnan(Wl[j].P) || isnan( Wr[j].P) ) { printf("P_i is nan j ");getchar();}
 
+#ifdef XRAYS
           coolfl = (*CoolingFunc)(Wl[j].d,Wl[j].P,(0.5*pG->dt), pG->xi[k][j][i],KEY_P);
           coolfr = (*CoolingFunc)(Wr[j].d,Wr[j].P,(0.5*pG->dt), pG->xi[k][j][i],KEY_P);
+#else
+          coolfl = (*CoolingFunc)(Wl[j].d,Wl[j].P,(0.5*pG->dt));
+          coolfr = (*CoolingFunc)(Wr[j].d,Wr[j].P,(0.5*pG->dt));
+#endif
+
+          if (coolfl != 0. || coolfr !=0.) printf("%f %f \n", coolfl, coolfr);
 
           Wl[j].P -= 0.5*pG->dt*Gamma_1*coolfl;
           Wr[j].P -= 0.5*pG->dt*Gamma_1*coolfr;
@@ -935,8 +946,14 @@ void integrate_3d_ctu(DomainS *pD)
         for (k=kl+1; k<=ku; k++) {
         	if ( isnan(Wl[k].P) || isnan( Wr[k].P) ) { printf("P_i is nan k  ");getchar();}
 
+#ifdef XRAYS
         	  coolfl = (*CoolingFunc)(Wl[k].d,Wl[k].P,(0.5*pG->dt), pG->xi[k][j][i],KEY_P);
           coolfr = (*CoolingFunc)(Wr[k].d,Wr[k].P,(0.5*pG->dt), pG->xi[k][j][i],KEY_P);
+#else
+    	  coolfl = (*CoolingFunc)(Wl[k].d,Wl[k].P,(0.5*pG->dt));
+      coolfr = (*CoolingFunc)(Wr[k].d,Wr[k].P,(0.5*pG->dt));
+#endif
+          if (coolfl != 0. || coolfr !=0.) printf("%f %f \n", coolfl, coolfr);
 
           Wl[k].P -= 0.5*pG->dt*Gamma_1*coolfl;
           Wr[k].P -= 0.5*pG->dt*Gamma_1*coolfr;
@@ -3201,10 +3218,16 @@ void integrate_3d_ctu(DomainS *pD)
         for (i=is; i<=ie; i++){
         	 if ( isnan(pG->U[k][j][i].E)  ) { printf("E_kji is nan i  ");getchar();}
 
+#ifdef XRAYS
         	coolf = (*CoolingFunc)(dhalf[k][j][i],phalf[k][j][i],pG->dt, pG->xi[k][j][i],KEY_E);
-          pG->U[k][j][i].E -= pG->dt*coolf;
+#else
+        	coolf = (*CoolingFunc)(dhalf[k][j][i],phalf[k][j][i],pG->dt);
+#endif
+        	pG->U[k][j][i].E -= pG->dt*coolf;
 
           pG->U[k][j][i].E  = (pG->U[k][j][i].E  > TINY_NUMBER) ? pG->U[k][j][i].E  : TINY_NUMBER;
+
+         if (coolf != 0. ) printf("%e \n", coolf);
 
           if ( pG->U[k][j][i].E <0. ){ printf("E_kji is neg ");getchar();}
 

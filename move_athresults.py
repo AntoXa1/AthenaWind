@@ -60,7 +60,7 @@ curM = date[1]
 
 curM = datetime.date.today().strftime('%b')
 
-dirToSave = os.getcwd()+ '/run'+curM + curY+curD+'_'+nx1+'x'+nx2+'x'+nx3+'_L'+F2Fedd+'n'+nc0+'/'
+dirToSave = os.getcwd()+ '/Soloviev'+curM + curY+curD+'_'+nx1+'x'+nx2+'x'+nx3+'_L'+F2Fedd+'n'+nc0+'/'
 
 try: 
     os.stat(dirToSave)       

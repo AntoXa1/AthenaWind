@@ -74,12 +74,18 @@ subproc.check_call(['rm', '-f', './bin/*.bin'])
 
 METHOD = '--with-flux=hlld'
 compLev = '0123'
+MPI = True
+MPI = False
 
 
 
 if '0' in compLev:
-    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',methodGasOrMHD, METHOD, problemToConfig])
-
+    if MPI:
+       subproc.check_call([PATH+'./configure', '--enable-mpi', '--with-coord=cylindrical',methodGasOrMHD, METHOD, problemToConfig])
+    else:
+       subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',methodGasOrMHD, METHOD, problemToConfig])
+        
+        
 if '1' in compLev:
     subproc.check_call(['make', 'clean'])
 

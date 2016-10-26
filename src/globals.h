@@ -1,4 +1,4 @@
-#define XRAYS
+//#define XRAYS
 
 
 #ifndef GLOBALS_H

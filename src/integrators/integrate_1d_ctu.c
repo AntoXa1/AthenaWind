@@ -202,8 +202,13 @@ void integrate_1d_ctu(DomainS *pD)
   if (CoolingFunc != NULL){
     for (i=il+1; i<=iu; i++) {
 
+#ifdef XRAYS
     	  coolfl = (*CoolingFunc)(Wl[i].d,Wl[i].P,(0.5*pG->dt),  pG->xi[ks][js][i], KEY_P );
       coolfr = (*CoolingFunc)(Wr[i].d,Wr[i].P,(0.5*pG->dt), pG->xi[ks][js][i], KEY_P);
+#else
+	  coolfl = (*CoolingFunc)(Wl[i].d,Wl[i].P,  (0.5*pG->dt) )	;
+      coolfr = (*CoolingFunc)(Wr[i].d,Wr[i].P, (0.5*pG->dt) );
+#endif
 
       Wl[i].P -= 0.5*pG->dt*Gamma_1*coolfl;
       Wr[i].P -= 0.5*pG->dt*Gamma_1*coolfr;
@@ -525,7 +530,11 @@ void integrate_1d_ctu(DomainS *pD)
   if (CoolingFunc != NULL){
     for (i=is; i<=ie; i++) {
 
+#ifdef XRAYS
     	  coolf = (*CoolingFunc)(dhalf[i],phalf[i],pG->dt, pG->xi[ks][js][i], KEY_E );
+#else
+    	  coolf = (*CoolingFunc)(dhalf[i],phalf[i],pG->dt);
+#endif
 
       pG->U[ks][js][i].E -= pG->dt*coolf;
 

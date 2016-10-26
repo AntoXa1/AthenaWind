@@ -500,6 +500,7 @@ typedef struct Output_s{
 /*! \fn Real (*GravPotFun_t)(const Real x1, const Real x2, const Real x3)
  *  \brief Gravitational potential function. */
 typedef Real (*GravPotFun_t)(const Real x1, const Real x2, const Real x3);
+
 #if defined(CYLINDRICAL) && defined(FARGO)
 /*! \fn Real (*OrbitalFun_t)(const Real x1)
  *  \brief Orbital function for FARGO */
@@ -511,10 +512,15 @@ typedef Real (*ShearFun_t)(const Real x1);
 
 /*! \fn Real (*CoolingFun_t)(const Real d, const Real p, const Real dt);
  *  \brief Cooling function. */
-typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt, Real realParam, int intParam);
+
+#ifdef XRAYS
+	typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt, Real realParam, int intParam);
+#else
+	typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt);
+#endif
 
 //A.D. added a parameter
-//typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt, const Real par);
+
 
 
 

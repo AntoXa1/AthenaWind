@@ -8,7 +8,7 @@ journal = Hawley & Krolik
 num_domains     = 1                 # number of Domains in Mesh
 problem_id      = HKDisk      # problem ID: basename of output filenames
 maxout          = 3          # Output blocks number from 1 -> maxout
-
+		  	       	  
 <output1>
 out_fmt = hst               # History data dump
 dt      = 61.0            # time increment between outputs
@@ -63,7 +63,7 @@ q               = 1.68
 r0              = 20             # Radius of pressure max
 rhomax          = 300            # Density at pressure max
 r_in            = 8             # Inner radius of torus
-rho0            = 1.0e-2         # Background density
+rho0            = 1.0e-3         # Background density
 e0              = 1.0e-4         # Background energy
 dcut            = 1.0            # Density cutoff for magnetic field
 beta            = 100.0          # Value of beta=Pgas/Pb

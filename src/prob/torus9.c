@@ -17,12 +17,29 @@
 #include "globals.h"
 #include "prototypes.h"
 
+//****************************************
+
+
+
+#define HAWL
+//#define SOLOV
+#if !defined(HAWL)
+	#define SOLOV
+#endif
+
+
+//****************************************
+
+
 static void inX1BoundCond(GridS *pGrid);
 void plot(MeshS *pM, char name[16]);
+
+#ifdef XRAYS
 void optDepthFunctions(MeshS *pM);
 Real updateEnergyFromXrayHeatCool(const Real dens, const Real Press, const Real dt, const Real xi_in, int whatToDo);
 void xRayHeatCool(const Real dens, const Real Press, const Real xi_in, Real*, Real*,  const Real dt);
 Real rtsafe_energy_eq(Real, Real, Real, Real, int*);
+#endif
 
 // Input parameters
 static Real q, r0, r_in, rho0, e0, dcut, beta, seed, R_ib;
@@ -30,7 +47,8 @@ static Real nc0, F2Fedd, fx =0.5, fuv =0.5;
 static Real rRadSrc[2]={0.,0.}; //coordinates of the radiation source
 static Real Ctor, Kbar, nAd, q1, xm, rgToR0,Tx,Rg,MBH_in_gram,Tgmin,
 Dsc,Nsc,Rsc,Usc,Psc, Esc,Time0,Tvir0,Lamd0,Evir0, Ledd_e, inRadOfMesh,
-Lx, Luv, a1 ;
+Lx, Luv, a1;
+
 
 
 static Real
@@ -50,8 +68,29 @@ static Real
 	SGMB,MSOLYR,
 	YR = 365.*24.*3600.,
 	M_MW = 1., //mean mol. weight
-//	PI = 3.14159265359;
 	tiny = 1.E-10;
+//	PI = 3.14159265359;
+
+//----------------------------
+
+
+#ifdef SOLOV
+static Real
+	Kbar_Sol,
+
+	Br0_Sol = 1.,
+	Br1_Sol = 6.,
+
+	a1_Sol =1,
+	a2_Sol = 1,
+	b1_Sol =3.,
+
+	w0_Sol =2.,
+	w1_Sol =0.;
+#endif
+
+
+//----------------------------
 
 //extern x1GravAcc;
 
@@ -103,7 +142,7 @@ void apause(){
 	getchar();
 }
 
-
+#ifdef XRAYS
 void optDepthFunctions(MeshS *pM){
 	// it is assumed that the source is located on the axis of symmetry
 
@@ -383,7 +422,7 @@ void xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
 //	 *Hx = (Tg < Tx) ? *Hx : 0.;
 //	 printf("%e %e %e %e %e \n", Hx, Tg, xi, dens, Press);
 }
-
+#endif
 
 
 void plot(MeshS *pM, char name[16]){
@@ -422,6 +461,7 @@ void plot(MeshS *pM, char name[16]){
 			 if (strcmp(name, "E") == 0){
 				 fprintf(f, "%f\n", pG->U[k][j][i].E );
 			 }
+#ifdef XRAYS
 			 if (strcmp(name, "tau") == 0){
 				 fprintf(f, "%f\n", pG->tau_e[k][j][i] );
 			 }
@@ -429,6 +469,7 @@ void plot(MeshS *pM, char name[16]){
 //				 fprintf(f, "%f\n", log10(pG->xi[k][j][i]) );
 				 fprintf(f, "%f\n", (pG->xi[k][j][i]) );
 			 }
+#endif
 	   }
 	   fprintf(f,"\n");
 	}
@@ -471,32 +512,42 @@ static Real grav_acc(const Real x1, const Real x2, const Real x3) {
 /*! \fn Real density(Real x1, Real x2, Real x3)
  *  \brief Calculates the density at x1, x2, x3*/
 
+#define VP(R) pow(R/xm, 1.-q)
+
 Real density(Real x1, Real x2, Real x3) {
-  Real rad, tmp, d;
+	Real rad, tmp, d, res;
+	rad = sqrt( SQR(x1) + SQR(x3));
 
 
-  rad = sqrt( SQR(x1) + SQR(x3));
-
-//  tmp = (Ctor + (xm*1.0/(rad-rgToR0)) - pow(xm, 2.0*q)*pow(x1,-q1)/q1)/(nAd+1)/Kbar;
-//  d = pow(tmp, nAd)*( x1>=r_in );
-
+#ifdef SOLOV
    tmp = (Ctor + xm/(rad-rgToR0)  - a1*pow(x1,-q1)) /(nAd+1)/Kbar;
+   res= Br0_Sol + pow(x1,2)/2. + 1/sqrt(pow(x1,2) + pow(x3,2)) -
+   		   (Br1_Sol + (w0_Sol*pow(x1,2))/2.)*(a2_Sol*pow(-1 + pow(x1,2),2) + (b1_Sol + a1_Sol*(-1 + pow(x1,2)))*pow(x3,2));
+   res /= ((nAd+1)*Kbar);
+   d = pow(res, nAd)*( res >=0.01 );
+#endif
 
-   d = pow(tmp, nAd)*( tmp>=0.1 );
+
+#ifdef HAWL
+   tmp = (Ctor + (xm*1.0/( rad-rgToR0 )) - pow(xm, 2.0*q )*pow( x1, -q1 )/q1)/(nAd+1)/Kbar;
+   d = pow(tmp, nAd)*( x1>=r_in );
+#endif
+
+
+d = MAX(d, rho0);
 
 //  printf("in density()  %f %f %f %f %f %f\n", r_in, nAd, x1, rad, tmp, d); pause();
 //	  printf("%f %f %f %f %f %f\n", r_in, nAd, x1, rad, tmp, d); pause();
-
-  d = MAX(d, rho0);
-
-
-
-//  temp = C + (1.0/(rad-2.0)) - f*pow(x1,-2.0*(q-1.0));
-//  temp = MAX(temp,0.0);
+//if (res>0.){
+//      printf("Kbar = %f %f\n", Kbar, Kbar_Sol);
+//  	  printf("%f %f %f %f\n", x1, tmp, res, d);
+// }
 //  d = pow(temp/Kbar,n)*(x1>=r_in);
 //  d = MAX(d,rho0);
-//   d = x1 < r_in ? rho0 : d;
-  return d;
+//  d = x1 < r_in ? rho0 : d;
+
+return d;
+
 }
 
 /*! \fn Real Volume(Grid *pG, int i, int j, int k)
@@ -528,8 +579,9 @@ void problem(DomainS *pDomain)
 {
   GridS *pG=(pDomain->Grid);
 
+#ifdef XRAYS
   CoolingFunc = updateEnergyFromXrayHeatCool;
-//apause();
+#endif
 
 
   int i,j,k;
@@ -542,11 +594,13 @@ void problem(DomainS *pDomain)
   Real divB=0.0, maxdivB=0.0;
 
 
+
 //  ------------------------------
 //  Soloviev solution
 
-  Real Psi_Sol,a1_Sol, a2_Sol,b1_Sol;
-
+#ifdef SOLOV
+  Real Psi_Sol;
+#endif
 
  //  ------------------------------
 
@@ -595,8 +649,6 @@ void problem(DomainS *pDomain)
   dcut = par_getd("problem","dcut");
   beta = par_getd("problem","beta");
 #endif
-
-
 
 
 printf("F2Fedd = %e \n", F2Fedd);
@@ -654,15 +706,25 @@ printf("R0 = %e * R_g \n", r0);
 //    Kbar = (Ctor + xm*1.0/(xm-rgToR0) - pow(xm, 2.0) /q1) /(nAd+1);
 
 
+#ifdef HAWL
     	   a1 = pow(xm, q1) /q1;
     	   Ctor = a1* pow(r_in,-q1) - xm/(r_in-rgToR0);
     	   Kbar = (Ctor + xm/(xm-rgToR0) - 1./q1) /(nAd+1);
+#endif
+
+#ifdef SOLOV
+    	   Kbar_Sol =(1.5 + Br0_Sol)/(1 + nAd);
+    	   Kbar = Kbar_Sol;
+#endif
+
 
 //   	    cc_pos(pG, is+5,js,ks,&R_ib,&x2,&x3);
 //   	    cc_pos(pG, is,js,ks,&x1,&x2,&x3)	;
 //        printf(" %e  %e \n ", R_ib, x1); apause();
+//    	   Kbar_Sol = (C3_Sol + (6. + 3.*b1_Sol + a2_Sol*w0_Sol)/6.);
+//    	   Kbar_Sol /= (nAd+1);
 
-    	   printf("Ctor, Kbar= %e %e \n", Ctor, Kbar ); //apause();
+printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
 
 //    printf(" %e %e %e %e %e %e %e\n", q, Rsc, Dsc, Usc, Time0,Tvir0,Lamd0); apause();
 
@@ -688,19 +750,14 @@ printf("R0 = %e * R_g \n", r0);
         pG->U[k][j][i].d = rho0;
         pG->U[k][j][i].M1 = 0.0;
 
-        //----------------------------
 
-           pG->U[k][j][i].M2 = rho0 * sqrt(rad)/(rad-rgToR0);
+         pG->U[k][j][i].M2 = rho0 * sqrt(rad)/(rad-rgToR0);
 
 //        pG->U[k][j][i].M2 = VP(x1)*rho0;
-
 //        pG->U[k][j][i].M2 = 0.0;
-
-        //----------------------------
 
         pG->U[k][j][i].M3 = 0.0;
         pG->U[k][j][i].E   = e0;
-
 
 #ifdef MHD
         Ap[k][j][i] = 0.0;
@@ -710,7 +767,6 @@ printf("R0 = %e * R_g \n", r0);
         pG->U[k][j][i].B1c = 0.0;
         pG->U[k][j][i].B2c = 0.0;
         pG->U[k][j][i].B3c = 0.0;
-
 #endif
 
         // Set up torus
@@ -721,11 +777,16 @@ printf("R0 = %e * R_g \n", r0);
 
         if (rbnd<=0) { printf("rbnd<=0: %e \n", rbnd); apause();}
 
+        r_in = 0.5;
+//        if ( (x1 >= r_in) && (rad <= rbnd) ) { //Checks to see if cell is in torus
 
-        if ( (x1 >= r_in) && (rad <= rbnd) ) { //Checks to see if cell is in torus
-
+        	if (x1 >= r_in) { //Dummy
 
         	rhoa = density(x1, x2, x3);
+
+        	if (rhoa>0.1){
+        		printf("%f \n", rhoa);
+        	}
 
         	IntE = pow(rhoa, GAM53)*Kbar/Gamma_1;
 
@@ -737,6 +798,15 @@ printf("R0 = %e * R_g \n", r0);
 
             pG->U[k][j][i].d = rhoa;
             pG->U[k][j][i].M2 = VP(x1)*pG->U[k][j][i].d;
+
+#ifdef SOLOV
+		    	Psi_Sol= a2_Sol*pow(-1 + pow(x1,2),2) + (b1_Sol + a1*(-1 + pow(x1,2)))*pow(x3,2);
+		    	pG->U[k][j][i].M2 = sqrt( ( 1.-w0_Sol* Psi_Sol  > 0 ) ) *pG->U[k][j][i].d;
+#endif
+
+
+
+
             pG->U[k][j][i].E = IntE;
 
             //Note, at this point, E holds only the internal energy.  This must
@@ -807,19 +877,13 @@ printf("R0 = %e * R_g \n", r0);
 
 
 
-
-//         Psi_Sol= a2_Sol*pow(-1 + pow(x1i,2),2) + (b1_Sol + a1*(-1 + pow(x1i,2)))*pow(x3i,2);
-//
-        a1_Sol = 1.;
-	    a2_Sol = 1.;
-		b1_Sol = 3.;
-
-
-
-        pG->B1i[k][j][i] = (-2*(b1_Sol + a1_Sol*(-1 + pow(x1i,2)))*x3i)/x1i;   //Bx
-
-         pG->B3i[k][j][i] =4*a2_Sol*(-1 + pow(x1i,2)) + 2*a1_Sol*pow(x3i,2); //Bz
-
+#ifdef SOLOV
+   a1_Sol = 1.;
+   a2_Sol = 1.;
+   b1_Sol = 3.;
+   pG->B1i[k][j][i] = (-2*(b1_Sol + a1_Sol*(-1 + pow(x1i,2)))*x3i)/x1i;   //Bx
+   pG->B3i[k][j][i] =4*a2_Sol*(-1 + pow(x1i,2)) + 2*a1_Sol*pow(x3i,2); //Bz
+#endif
 
 
 
@@ -1082,7 +1146,7 @@ void Userwork_in_loop (MeshS *pM)
 
 
 
-optDepthFunctions(pM);
+//optDepthFunctions(pM);
 
 
 
@@ -1201,6 +1265,7 @@ void Userwork_after_loop(MeshS *pM)
 //xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
 //									Real Hx, Real dHxdT)
 
+#ifdef XRAYS
 Real rtsafe_energy_eq(Real Press, Real dens, Real xi, Real dt, int* status)
 {
 	//returns new Pressure
@@ -1299,6 +1364,8 @@ Real rtsafe_energy_eq(Real Press, Real dens, Real xi, Real dt, int* status)
 //		ath_error("interval cannot be expanded further in torus9:rtsafe_energy_eq\n");
 
 }
+#endif
+
 
 #undef MAXIT
 #undef MAXIT_INTERV_EXPAND

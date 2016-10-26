@@ -64,7 +64,7 @@ gamma           = 1.6666666667   # gamma = C_p/C_v
 q               = 2 #1.68
 r0              = 100             # Radius of pressure max in rg
 rhomax          = 300            # Density at pressure max
-r_in            = 0.6             # Inner radius of torus
+r_in            = 0.1             # 0.6 Inner radius of torus
 rho0            = 1.0e-2         # Background density
 e0              = 1.0e-4         # Background energy
 dcut            = 0.01            # Density cutoff for magnetic field
