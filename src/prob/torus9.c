@@ -857,6 +857,8 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
         x2i = x2 - 0.5*pG->dx2;
         x3i = x3 - 0.5*pG->dx3;
 
+
+
         // Br = -dAp/dz
         pG->B1i[k][j][i] = -(Ap[k+1][j][i] - Ap[k][j][i])/pG->dx3;
 
@@ -1015,7 +1017,7 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
 
   StaticGravPot = grav_pot;
 
-  bvals_mhd_fun(pDomain, left_x1,  inX1BoundCond );
+//  bvals_mhd_fun(pDomain, left_x1,  inX1BoundCond );
 
 
 //  for (k=kl; k<=ku; k++) {
@@ -1161,7 +1163,8 @@ void Userwork_in_loop (MeshS *pM)
       for (i=il; i<=iu; i++) {
 
     	  	/*  custom BC  */
-//    	  	cc_pos(pG,i,j,k,&x1,&x2,&x3);
+    	  	cc_pos(pG,i,j,k,&x1,&x2,&x3);
+	
 //        rad = sqrt(SQR(x1) + SQR(x3));
 //        if (rad< R_ib){
 //        		pG->U[k][j][i].d = rho0;
@@ -1504,6 +1507,7 @@ Real rtsafe_energy_eq(Real Press, Real dens, Real xi, Real dt, int* status)
 //        end if
 //
 //} //end  traceCell
+
 static void inX1BoundCond(GridS *pGrid)
 {
   int is = pGrid->is;
