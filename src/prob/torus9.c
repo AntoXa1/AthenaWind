@@ -1116,7 +1116,7 @@ void Userwork_in_loop (MeshS *pM)
 
   int i,j,k,is,ie,js,je,ks,ke, nx1, nx2, nx3, il, iu, jl,ju,kl,ku;
 	int prote, protd, my_id;
-  Real IntE, KinE, MagE=0.0, x1, x2, x3, DivB,Pgas,rad;
+	Real IntE, KinE, MagE=0.0, x1, x2, x3, DivB,Pgas,rad, dns;
   static Real TotMass=0.0;
 
   //A.D.
@@ -1161,7 +1161,8 @@ void Userwork_in_loop (MeshS *pM)
       for (i=il; i<=iu; i++) {
 
     	  	/*  custom BC  */
-//    	  	cc_pos(pG,i,j,k,&x1,&x2,&x3);
+    	  	cc_pos(pG,i,j,k,&x1,&x2,&x3);
+
 //        rad = sqrt(SQR(x1) + SQR(x3));
 //        if (rad< R_ib){
 //        		pG->U[k][j][i].d = rho0;
@@ -1172,11 +1173,7 @@ void Userwork_in_loop (MeshS *pM)
 //        }
 
 
-        if (isnan(pG->U[k][j][i].d) || isnan(pG->U[k][j][i].E)) {
-          printf("At pos (%d,%d,%d) (%f,%f,%f), Den = %f, E = %f\n", i, j, k, x1,x2,x3,pG->U[k][j][i].d, pG->U[k][j][i].E);
-          apause();
-          pG->U[k][j][i].d = rho0;
-        }
+
 
         KinE = 0.5*(SQR(pG->U[k][j][i].M1) + SQR(pG->U[k][j][i].M2)
                 + SQR(pG->U[k][j][i].M3))/(pG->U[k][j][i].d);
@@ -1188,27 +1185,45 @@ void Userwork_in_loop (MeshS *pM)
 #endif
 
         IntE = pG->U[k][j][i].E - KinE - MagE;
+       
+        if (isnan(pG->U[k][j][i].d) || isnan(pG->U[k][j][i].E)) {
+          
+	  printf("At pos (%d,%d,%d) (%f,%f,%f), Den = %f, E = %f\n", i, j, k, x1,x2,x3,pG->U[k][j][i].d, pG->U[k][j][i].E);
+ 
+	  printf("KinE, MagE, IntE (%f,%f,%f), \n", KinE, MagE, IntE);
+
+          apause();
+          pG->U[k][j][i].d = rho0;
+        }
 
 //        printf("%f %f\n", IntE, x1);
 //        printf("%f %f %f\n", pG->U[k][j][i].d, pG->U[k][j][i].M2, x1);
 
 
-        if (pG->U[k][j][i].d < rho0) {
-          pG->U[k][j][i].d = rho0;
+        if (pG->U[k][j][i].d < dcut) {
+
+          /* if (pG->U[k][j][i].d < rho0) {   */
+
+	  dns = dcut;
+
+	  /* pG->U[k][j][i].d = rho0; */
+
+          /* KinE = 0.5*(SQR(pG->U[k][j][i].M1) + SQR(pG->U[k][j][i].M2) */
+          /*         + SQR(pG->U[k][j][i].M3))/(pG->U[k][j][i].d); */
 
           KinE = 0.5*(SQR(pG->U[k][j][i].M1) + SQR(pG->U[k][j][i].M2)
-                  + SQR(pG->U[k][j][i].M3))/(pG->U[k][j][i].d);
-
+		      + SQR(pG->U[k][j][i].M3  ))/dns;
+     
           IntE = e0;  // Set this as well to keep c_s reasonable
 
           pG->U[k][j][i].E = IntE + KinE + MagE;
 
           protd++;
-		  prote++;
+	  prote++;
         }
         else if (IntE < e0) {
           pG->U[k][j][i].E = e0 + KinE + MagE;
-		  prote++;
+	  prote++;
         }
 
         IntE = pG->U[k][j][i].E - KinE - MagE;
