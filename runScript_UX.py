@@ -58,13 +58,23 @@ if caseToDo == 'hkdisk_hd':
     SolverType  = '--with-flux=hlld'
     inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
     
+if caseToDo == 'torus_hd':    
+    problemToConfig = '--with-problem=torus9'
+    methodGasOrMHD =  '--with-gas=hydro'    
+    METHOD = '--with-flux=roe'
+    inputFileList = ['../tst/cylindrical/athinput.torus9_hydro_2D', '../tst/cylindrical/athinput.torus9_hydro_2D_2']
+    inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
 
 if caseToDo == 'torus_mhd':    
     problemToConfig = '--with-problem=torus9'
-
-    methodGasOrMHD =  '--with-gas=mhd'
-    
+    methodGasOrMHD =  '--with-gas=mhd'    
     inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
+    METHOD = '--with-flux=hlld'   
+    # METHOD = '--with-flux=hlle'    
+    ORDER = '--with-order=2p'    
+#   ORDER = '--with-order=3p'
+    Integrator = '--with-integrator=vl'
+
 
 
 
@@ -83,9 +93,8 @@ if '0' in compLev:
     if MPI:
        subproc.check_call([PATH+'./configure', '--enable-mpi', '--with-coord=cylindrical',methodGasOrMHD, METHOD, problemToConfig])
     else:
-       subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',methodGasOrMHD, METHOD, problemToConfig])
-        
-        
+       subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',Integrator, methodGasOrMHD, METHOD, ORDER, problemToConfig])
+                
 if '1' in compLev:
     subproc.check_call(['make', 'clean'])
 
