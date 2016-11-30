@@ -19,8 +19,6 @@
 
 //****************************************
 
-
-
 #define HAWL
 //#define SOLOV
 #if !defined(HAWL)
@@ -30,12 +28,20 @@
 
 //****************************************
 
-
 static void inX1BoundCond(GridS *pGrid);
+static void diode_outflow_ix3(GridS *pGrid);
+static void diode_outflow_ox3(GridS *pGrid);
+
 void plot(MeshS *pM, char name[16]);
+static void calcProblemParameters();
+static void printProblemParameters();
 
 #ifdef XRAYS
-void optDepthFunctions(MeshS *pM);
+//void optDepthFunctions(MeshS *pM);
+
+void optDepthFunctions(GridS *pG);
+
+
 Real updateEnergyFromXrayHeatCool(const Real dens, const Real Press, const Real dt, const Real xi_in, int whatToDo);
 void xRayHeatCool(const Real dens, const Real Press, const Real xi_in, Real*, Real*,  const Real dt);
 Real rtsafe_energy_eq(Real, Real, Real, Real, int*);
@@ -143,10 +149,14 @@ void apause(){
 }
 
 #ifdef XRAYS
-void optDepthFunctions(MeshS *pM){
+
+//void optDepthFunctions(MeshS *pM){
+
+void optDepthFunctions(GridS *pG){
 	// it is assumed that the source is located on the axis of symmetry
 
-	GridS *pG=pM->Domain[0][0].Grid;
+//	GridS *pG=pM->Domain[0][0].Grid;
+
 	Real r, t, z, dl, sToX, sToZ,tau,dtau, xi,x1,x2,x3, ro,rad, nnorm,norm[2],rCur[2],rNextX[2],rNextZ[2],colDens, \
 			den, xBndMax,zBndMin,zBndMax,x_is,z_is,res, sToX1, sToZ1, rsph;
 	int i,j,k,is,ie,js,je,ks,ke, il, iu, jl,ju,kl,ku,m,ip,jp,kp,knew;
@@ -267,7 +277,8 @@ void optDepthFunctions(MeshS *pM){
 
 //    	printf("%e \n", 	exp(- (pG->tau_e[kp][jp][ip]) ));
 //    	 	printf("%e %e \n", Rsc, Dsc); apause();
-//    	 	 printf("tau = %f  %f \n",  (pG->tau_e[kp][jp][ip]), rsph*Rsc*KPE*Dsc*pG->U[kp][jp][ip].d );
+
+//    	 	printf("tau = %f  %f \n",  (pG->tau_e[kp][jp][ip]), rsph*Rsc*KPE*Dsc*pG->U[kp][jp][ip].d );
 
         } //i = x
 //    	   apause();
@@ -304,7 +315,7 @@ Real updateEnergyFromXrayHeatCool(const Real dens, const Real Press, const Real 
 //	 }
 //	 Hx = dP/dt/Gamma_1;
 
-	//	 printf("%e %e \n", t_th, dt);
+//		if (Hx>0) printf("%e %e %e %e %e\n", t_th, dt, Hx, Press, xi_in);
 //	printf("%e \n", Gamma_1 ); //apause();
 
 
@@ -315,18 +326,20 @@ Real updateEnergyFromXrayHeatCool(const Real dens, const Real Press, const Real 
 
 		 dP = Pnew-Press;
 
+//		 if (dP >0) printf("%f \n", dP);
+
 		 if( fabs(dP/Press ) > dPmax){
 			 dP =fabs(Press) * copysign(dPmax,  dP );
-		 // printf("%e %e %e %e %f \n",max_delta_e, eold,  dt*Hx, de/eold, Tx);
+//		  printf("%e %e %e %e %f \n",max_delta_e, eold,  dt*Hx, de/eold, Tx);
 		 }
 		 Hx = dP/dt/Gamma_1;
 //	 }
 
 
-	 if(Pnew <= 0. ){
-		 Hx = 0.;
+	 if(Pnew <= 0. ) Hx = 0.;
+
 //		 printf("negative pressure detected");
-	 }
+
 
 //	 Hx = (abs(Hx)>0.0001 ) ?  copysign(0.0001, Hx) : Hx;
 //	 printf( " %e %e \n", Press, Pnew );
@@ -334,7 +347,7 @@ Real updateEnergyFromXrayHeatCool(const Real dens, const Real Press, const Real 
 //	 if(xi_in>100.) printf("%e %e %e %e %e %e \n", Hx, dens, Press,Pnew, Tg, xi_in);
 
 //	 Hx = 0.;
-	 return(-Hx); /* returns cooling not heating rate */
+	 return(-Hx); /* returns cooling NOT  heating rate */
 
 }
 
@@ -364,7 +377,7 @@ void xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
 
 	xi = xi_in;
 
-	xi = fmax(xi_in, 1.);
+//	xi = fmax(xi_in, 1.);
 
 //	 if(xi_in < 1.) {*Hx=0.; return;}
 
@@ -406,23 +419,22 @@ void xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
 
 	 *Hx = *Hx/Lamd0 * pow(dens*nc0, 2);
 
-
 //	 if(xi_in>100.)  printf("%e \n", *Hx );
-//	 printf(" %e %e %e %e %e %e\n",Tg, xi, *Hx, Lbr, Gc, Gx); //apause();
+//	 printf(" %e %e %e %e %e %e %e\n",Tg, Tx, xi, *Hx, Lbr, Gc, Gx); //apause();
 //	 printf("%e %e %e %e \n", dens, Press, Tg, xi);
 
 	 if(isnan(*Hx)){
 		 printf("Hx or/and Cx is nan %e %e %e %e \n", dens, Press, Tg, xi);
-		 *Hx = 0.;//		 apause();
+		 *Hx = 0.;		//apause();
 		 return;
 	 }
 
-	 *Hx = 0.;
+//	 *Hx = 0.;
 
 //	 *Hx = (Tg < Tx) ? *Hx : 0.;
 //	 printf("%e %e %e %e %e \n", Hx, Tg, xi, dens, Press);
 }
-#endif
+#endif  /* XRAYS */
 
 
 void plot(MeshS *pM, char name[16]){
@@ -651,71 +663,21 @@ void problem(DomainS *pDomain)
 #endif
 
 
-printf("F2Fedd = %e \n", F2Fedd);
-printf("nc0 = %e \n", nc0);
-printf("R0 = %e * R_g \n", r0);
+//printf("%f \n", F2Fedd); getchar();
 
-
-    Real  tmp, mue;
-
-    MSOLYR = 1.989e33/YR;
-    SGMB = ARAD*CL/4;
-
-    MBH_in_gram = M2Msun*MSUN;
-    Rg = 2*GRV*MBH_in_gram/pow(CL,2);
-    r0*=Rg;
-
-    Nsc=nc0;
-    Tx=1.0e8; //Compton temperature
-    	Tgmin = 2.3;
-    	Dsc = nc0*M_MW*	M_U;
-//    	printf( " %e %e %e %e\n", Dsc, nc0, M_MW, M_U);
 
     	Real Tg = fabs( Gamma_1*M_MW *e0/ (rho0*Dsc) /RGAS );
-	printf(" %e \n", Tg); //apause();
 
+//	printf(" %e \n", Tg); apause();
 
-	xm =1.;
-//    	r_in *= xm;
+    	calcProblemParameters();
 
-   	Rsc = xm* r0;
-   	rgToR0 = Rg/Rsc;
-//   	rgToR0 = 0.;
-	printf("Rsc = %e \n", Rsc); //apause();
+    	printProblemParameters();
 
-    	Usc = sqrt(GRV*MBH_in_gram/Rsc);
-    	Time0=sqrt( pow(Rsc,3) /GRV/MBH_in_gram);
-    	Evir0=Dsc*GRV*MBH_in_gram/Rsc;  //(erg/cm^3)
-    	Psc = Evir0;
-    	Esc = Psc;
-    	mue = M_MW;
-
-	Tvir0=GRV*MBH_in_gram/RGAS/Rsc*mue;
-    	Lamd0=Evir0/Time0;  // (erg/cm^3/s)
-    	Ledd_e = 4.*PI *CL*GRV*MBH_in_gram/KPE;
-    	Lx = fx * F2Fedd*Ledd_e;
-    	Luv= fuv *F2Fedd*Ledd_e;
-
-//  torus parameters
-
-    nAd = 1.0/Gamma_1;
-    	q1 = 2.0*(q-1.0);
 //    Ctor = pow(r_in,-q1)/q1 - 1.0/(r_in-rgToR0);
 //    Kbar = (Ctor + 1.0/(1.-rgToR0) - 1./q1) /(nAd+1);
 //    Ctor = pow(xm, 2.0*q) * pow(r_in,-q1)/q1 - xm*1.0/(r_in-rgToR0);
 //    Kbar = (Ctor + xm*1.0/(xm-rgToR0) - pow(xm, 2.0) /q1) /(nAd+1);
-
-
-#ifdef HAWL
-    	   a1 = pow(xm, q1) /q1;
-    	   Ctor = a1* pow(r_in,-q1) - xm/(r_in-rgToR0);
-    	   Kbar = (Ctor + xm/(xm-rgToR0) - 1./q1) /(nAd+1);
-#endif
-
-#ifdef SOLOV
-    	   Kbar_Sol =(1.5 + Br0_Sol)/(1 + nAd);
-    	   Kbar = Kbar_Sol;
-#endif
 
 
 //   	    cc_pos(pG, is+5,js,ks,&R_ib,&x2,&x3);
@@ -724,7 +686,7 @@ printf("R0 = %e * R_g \n", r0);
 //    	   Kbar_Sol = (C3_Sol + (6. + 3.*b1_Sol + a2_Sol*w0_Sol)/6.);
 //    	   Kbar_Sol /= (nAd+1);
 
-printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
+
 
 //    printf(" %e %e %e %e %e %e %e\n", q, Rsc, Dsc, Usc, Time0,Tvir0,Lamd0); apause();
 
@@ -785,7 +747,7 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
         	rhoa = density(x1, x2, x3);
 
         	if (rhoa>0.1){
-        		printf("%f \n", rhoa);
+//        		printf("%f \n", rhoa);
         	}
 
         	IntE = pow(rhoa, GAM53)*Kbar/Gamma_1;
@@ -805,8 +767,6 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
 #endif
 
 
-
-
             pG->U[k][j][i].E = IntE;
 
             //Note, at this point, E holds only the internal energy.  This must
@@ -818,7 +778,7 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
     }
   }
 
-  // Calculate density at corner and set up Ap if appropriate
+  // Calculate density and set up Ap if appropriate
   for (k=kl; k<=ku+1; k++) {
     for (j=jl; j<=ju+1; j++) {
       for (i=il; i<=iu+1; i++) {
@@ -833,11 +793,19 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
 
         rhoa = density(x1i,x2i,x3i);
 
+//printf("%f \n", dcut); apause();
+
 #ifdef MHD
         if (rhoa >= dcut) {
           // Ap = (density-cutoff)^2
+
           Ap[k][j][i] = SQR(rhoa-dcut);
+
         }
+//        else {
+//        	  Ap[k][j][i] = x1i;
+//        }
+
 #endif //MHD
 
       }
@@ -878,6 +846,17 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
 //        }
 
 
+//        // non-zero B in the empty space
+//	    cc_pos(pG,i,j,k,&x1,&x2,&x3);
+//	    rad = sqrt(SQR(x1) + SQR(x3));
+//	    x1i = x1 - 0.5*pG->dx1;
+//	    x2i = x2 - 0.5*pG->dx2;
+//    		x3i = x3 - 0.5*pG->dx3;
+//    		rhoa = density(x1i,x2i,x3i);
+//        if (rhoa <  dcut) {
+//        	pG->B3i[k][j][i] = (Ap[k][j][i+1]*(x1i+pG->dx1) - Ap[k][j][i]*x1i)/(x1*pG->dx1);
+//        pG->B3i[k][j][i] *= dcut;
+//        }
 
 #ifdef SOLOV
    a1_Sol = 1.;
@@ -987,6 +966,19 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
         pG->U[k][j][i].B3c *= scl;
         pG->B1i[k][j][i]   *= scl;
         pG->B3i[k][j][i]   *= scl;
+
+        cc_pos(pG,i,j,k,&x1,&x2,&x3);
+	    x1i = x1 - 0.5*pG->dx1;
+	    x2i = x2 - 0.5*pG->dx2;
+	    x3i = x3 - 0.5*pG->dx3;
+	    rhoa = density(x1i,x2i,x3i);
+
+//        if (rhoa <  dcut) {
+//        	printf("%f %f \n",
+//		pG->U[k][j][i].B1c,
+//		pG->U[k][j][i].B3c );
+//        }
+
       }
     }
   }
@@ -1016,8 +1008,23 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
 
 
   StaticGravPot = grav_pot;
+  x1GravAcc = grav_acc;
 
-//  bvals_mhd_fun(pDomain, left_x1,  inX1BoundCond );
+  bvals_mhd_fun(pDomain, left_x1,  inX1BoundCond );
+  bvals_mhd_fun(pDomain, left_x3,  diode_outflow_ix3 );
+  bvals_mhd_fun(pDomain, right_x3,  diode_outflow_ox3);
+
+//  plot(pG, "tau");
+
+#ifdef XRAYS
+
+  optDepthFunctions(pG);
+
+#endif
+
+//plot(pDomain, "tau");
+
+//plot(pDomain, "xi");
 
 
 //  for (k=kl; k<=ku; k++) {
@@ -1040,6 +1047,7 @@ printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
 //    }
 //  }
 //  x1GravAcc = grav_acc;
+
 //  set_bvals_fun(left_x1,  disk_ir_bc);
 //  set_bvals_fun(right_x1,  disk_or_bc);
 //  set_bvals_fun(left_x3,  diode_outflow_ix3);
@@ -1071,32 +1079,30 @@ void problem_write_restart(MeshS *pM, FILE *fp)
 
 void problem_read_restart(MeshS *pM, FILE *fp)
 {
-  q = par_getd("problem","q");
-  r0 = par_getd("problem","r0");
+ GridS *pG=pM->Domain[0][0].Grid;
 
-  r_in = par_getd("problem","r_in");
-  rho0 = par_getd("problem","rho0");
-  e0 = par_getd("problem","e0");
-	seed = par_getd("problem","seed");
+//  q = par_getd("problem","q");
+//  r0 = par_getd("problem","r0");
+//  r_in = par_getd("problem","r_in");
+//  rho0 = par_getd("problem","rho0");
+//  e0 = par_getd("problem","e0");
+//	seed = par_getd("problem","seed");
 
-#ifdef MHD
-  dcut = par_getd("problem","dcut");
-  beta = par_getd("problem","beta");
-#endif
+//#ifdef MHD
+//  dcut = par_getd("problem","dcut");
+//  beta = par_getd("problem","beta");
+//#endif
 
   /* Enroll the gravitational function and radial BC */
   StaticGravPot = grav_pot;
+  x1GravAcc = grav_acc;
 
-//  x1GravAcc = grav_acc;
+  calcProblemParameters();
+  printProblemParameters();
 
-
-
-
-//  set_bvals_fun(left_x1,disk_ir_bc);
-//  set_bvals_fun(right_x1,disk_or_bc);
-
-//  set_bvals_fun(left_x3,diode_outflow_ix3);
-//  set_bvals_fun(right_x3,diode_outflow_ox3);
+  bvals_mhd_fun(pG, left_x1,  inX1BoundCond );
+  bvals_mhd_fun(pG, left_x3,  diode_outflow_ix3 );
+  bvals_mhd_fun(pG, right_x3,  diode_outflow_ox3);
 
   return;
 }
@@ -1118,8 +1124,12 @@ void Userwork_in_loop (MeshS *pM)
 
   int i,j,k,is,ie,js,je,ks,ke, nx1, nx2, nx3, il, iu, jl,ju,kl,ku;
 	int prote, protd, my_id;
-	Real IntE, KinE, MagE=0.0, x1, x2, x3, DivB,Pgas,rad, dns;
-  static Real TotMass=0.0;
+	Real IntE, KinE, MagE=0.0, x1, x2, x3, DivB,Pgas,rad, dns,as_lim;
+
+	Real di, v1, v2, v3, qsq,p, asq,b1,b2,b3, bsq,rho_max;
+
+
+	static Real TotMass=0.0;
 
   //A.D.
   GridS *pG=pM->Domain[0][0].Grid;
@@ -1147,10 +1157,9 @@ void Userwork_in_loop (MeshS *pM)
 #endif
 
 
-
-//optDepthFunctions(pM);
-
-
+#ifdef XRAYS
+optDepthFunctions(pM);
+#endif
 
 //plot(pM, "d");
 //plot(pM, "tau");
@@ -1162,7 +1171,6 @@ void Userwork_in_loop (MeshS *pM)
     for (j=jl; j<=ju; j++) {
       for (i=il; i<=iu; i++) {
 
-    	  	/*  custom BC  */
     	  	cc_pos(pG,i,j,k,&x1,&x2,&x3);
 
 //        rad = sqrt(SQR(x1) + SQR(x3));
@@ -1173,8 +1181,6 @@ void Userwork_in_loop (MeshS *pM)
 //        		pG->U[k][j][i].M2= 0.;
 //        		pG->U[k][j][i].M3= 0.;
 //        }
-
-
 
 
         KinE = 0.5*(SQR(pG->U[k][j][i].M1) + SQR(pG->U[k][j][i].M2)
@@ -1189,51 +1195,91 @@ void Userwork_in_loop (MeshS *pM)
         IntE = pG->U[k][j][i].E - KinE - MagE;
        
         if (isnan(pG->U[k][j][i].d) || isnan(pG->U[k][j][i].E)) {
-          
-	  printf("At pos (%d,%d,%d) (%f,%f,%f), Den = %f, E = %f\n", i, j, k, x1,x2,x3,pG->U[k][j][i].d, pG->U[k][j][i].E);
- 
-	  printf("KinE, MagE, IntE (%f,%f,%f), \n", KinE, MagE, IntE);
+        				printf("At pos isnan: (%d,%d,%d) (%f,%f,%f), Den1 = %f, E1 = %f\n", i, j, k, x1,x2,x3,pG->U[k][j][i].d, pG->U[k][j][i].E);
+        				printf("KinE1, MagE1, IntE (%f,%f,%f), \n", KinE, MagE, IntE);
+        				apause();
 
-          apause();
           pG->U[k][j][i].d = rho0;
-        }
+        } //end isnan check
 
 //        printf("%f %f\n", IntE, x1);
 //        printf("%f %f %f\n", pG->U[k][j][i].d, pG->U[k][j][i].M2, x1);
 
+//printf("%f %f \n", rho0, dcut); getchar();
 
-        if (pG->U[k][j][i].d < dcut) {
+        di = 1.0/(pG->U[k][j][i].d);
+        v1 = pG->U[k][j][i].M1*di;
+        v2 = pG->U[k][j][i].M2*di;
+        v3 = pG->U[k][j][i].M3*di;
+        qsq = v1*v1 + v2*v2 + v3*v3;
+        b1 = pG->U[k][j][i].B1c
+          + fabs((double)(pG->B1i[k][j][i] - pG->U[k][j][i].B1c));
+        b2 = pG->U[k][j][i].B2c
+          + fabs((double)(pG->B2i[k][j][i] - pG->U[k][j][i].B2c));
+        b3 = pG->U[k][j][i].B3c
+          + fabs((double)(pG->B3i[k][j][i] - pG->U[k][j][i].B3c));
+        bsq = b1*b1 + b2*b2 + b3*b3;
+        p = MAX(Gamma_1*(pG->U[k][j][i].E - 0.5*pG->U[k][j][i].d*qsq
+                - 0.5*bsq), TINY_NUMBER);
+        asq = Gamma*p*di;
 
-          /* if (pG->U[k][j][i].d < rho0) {   */
+        rho_max = 100.;
+        as_lim = 10.;
 
-	  dns = dcut;
+        //check for very low density
+        pG->U[k][j][i].d = fmax(rho0,  pG->U[k][j][i].d );
 
-	  /* pG->U[k][j][i].d = rho0; */
+        if( (sqrt(asq)>as_lim) || (pG->U[k][j][i].d > rho_max) ) {
 
-          /* KinE = 0.5*(SQR(pG->U[k][j][i].M1) + SQR(pG->U[k][j][i].M2) */
-          /*         + SQR(pG->U[k][j][i].M3))/(pG->U[k][j][i].d); */
+        		dns = fmin(rho_max,  pG->U[k][j][i].d);
 
-          KinE = 0.5*(SQR(pG->U[k][j][i].M1) + SQR(pG->U[k][j][i].M2)
+        		//check for very high density
+        		pG->U[k][j][i].d = dns;
+
+             KinE = 0.5*(SQR(pG->U[k][j][i].M1) + SQR(pG->U[k][j][i].M2)
 		      + SQR(pG->U[k][j][i].M3  ))/dns;
      
-          IntE = e0;  // Set this as well to keep c_s reasonable
+             IntE = e0;  // Set this as well to keep c_s reasonable
 
-          pG->U[k][j][i].E = IntE + KinE + MagE;
+             pG->U[k][j][i].E = IntE + KinE + MagE;
 
-          protd++;
-	  prote++;
+             protd++;
+	         prote++;
         }
         else if (IntE < e0) {
           pG->U[k][j][i].E = e0 + KinE + MagE;
-	  prote++;
+          prote++;
         }
 
-        IntE = pG->U[k][j][i].E - KinE - MagE;
-        Pgas  = (Gamma-1)*IntE;
+
+        if (sqrt(asq)>as_lim){
+
+        		printf("\n At pos 'asq' (%d,%d,%d) (%f, %f, %f), Den1 = %e, E1 = %e\n", i, j, k, x1,x2,x3,
+        		pG->U[k][j][i].d, pG->U[k][j][i].E);
+        		printf("asq ,bsq, P, ro : %e %e %e  %e\n", asq, bsq, p, pG->U[k][j][i].d);
+        		printf("%e %e", rho0, dcut);
+        }
+
+
+
+//        else if (IntE > 1.) {
+//
+//          	pG->U[k][j][i].E = e0 + KinE + MagE;
+//
+//          	printf("torus9 d ,  IntE, KinE, MagE: %f %f %f %f\n", pG->U[k][j][i].d ,  IntE, KinE, MagE);
+//          	printf("At pos (%d,%d,%d) (%f,%f,%f), Den = %f, E = %f\n", i, j, k, x1,x2,x3,pG->U[k][j][i].d, pG->U[k][j][i].E);
+//          	prote++;
+//
+//        } //end  ro and E check
+
+
+//        IntE = pG->U[k][j][i].E - KinE - MagE;
+//        Pgas  = (Gamma-1)*IntE;
 //        xRayHeatCool(pG->U[k][j][i].d, Pgas, pG-> dt, pG->xi[k][j][i] );
 
-      }
 
+//      IntE = pG->U[k][j][i].E - KinE - MagE;
+      }
     }
   }
 
@@ -1528,23 +1574,52 @@ static void inX1BoundCond(GridS *pGrid)
   int js = pGrid->js, je = pGrid->je;
   int ks = pGrid->ks, ke = pGrid->ke;
   int i,j,k;
-
+  Real x1,x2,x3,rad,rsf,lsf;
 
 
 #ifdef MHD
   int ju, ku; /* j-upper, k-upper */
 #endif
 
+
   for (k=ks; k<=ke; k++) {
     for (j=js; j<=je; j++) {
       for (i=1; i<=nghost; i++) {
-    	    pGrid->U[k][j][is-i] = pGrid->U[k][j][is];
-
-    	    if (pGrid->U[k][j][is].M1 > 0.) {
-        		pGrid->U[k][j][is-i].M1 = 0.;
-        }
 
 
+    	  if( (pGrid->U[k][j][i].d < rho0) ||  (pGrid->U[k][j][i].d > 3.) ) {
+    		  printf("at BC: %e \n", pGrid->U[k][j][i].d );
+    	  }
+
+    	  cc_pos(pGrid,is,j,k,&x1,&x2,&x3);
+
+//    	  printf("%f %f %f\n", pGrid->U[k][j][i].M1, pGrid->U[k][j][i].M2, pGrid->U[k][j][i].M3);
+//   	  printf("%d \n", nghost ); apause();
+
+    	  	  rad = sqrt(SQR(x1) + SQR(x3));
+
+//       printf("%f %f\n", x1, x3);
+
+    	  	  // printf("%d %d\n", nghost, is); getchar();
+
+    	  	  pGrid->U[k][j][is-i] = pGrid->U[k][j][is];
+    	  	 pGrid->U[k][j][is-i].M1 = MIN(pGrid->U[k][j][is-i].M1,0.0);
+
+//    	  	  if (pGrid->U[k][j][is].M1 > 0.) {
+//      	    		pGrid->U[k][j][is-i].M1 = 0.;
+//    	  	  }
+
+    	      pGrid->U[k][j][is-i].M2 =  pGrid->U[k][j][is].d * sqrt(rad) / (rad-rgToR0);
+    	      pGrid->U[k][j][is-i].M2 =  pGrid->U[k][j][is].d * sqrt(  1 /  (rad-rgToR0 ) );
+
+
+
+
+    	      //    	  pGrid->U[k][j][is-i].d =  fmax(rho0, pGrid->U[k][j][is].d) ;
+//    	      pGrid->U[k][j][is-i].d =  rho0;
+//    	      pGrid->U[k][j][is-i].E =  e0;
+
+//       printf("%f \n", pGrid->U[k][j][is-i].E);
       }
     }
   }
@@ -1554,7 +1629,15 @@ static void inX1BoundCond(GridS *pGrid)
   for (k=ks; k<=ke; k++) {
     for (j=js; j<=je; j++) {
       for (i=1; i<=nghost-1; i++) {
-        pGrid->B1i[k][j][is-i] = pGrid->B1i[k][j][is];
+
+    	  pGrid->B1i[k][j][is-i] = pGrid->B1i[k][j][is];
+
+    	  rsf = (x1+0.5*pGrid->dx1);
+    	  lsf = (x1-0.5*pGrid->dx1);
+
+    	  pGrid->B1i[k][j][is-i] = pGrid->B1i[k][j][is]*rsf/lsf;
+
+
       }
     }
   }
@@ -1564,6 +1647,9 @@ static void inX1BoundCond(GridS *pGrid)
     for (j=js; j<=ju; j++) {
       for (i=1; i<=nghost; i++) {
         pGrid->B2i[k][j][is-i] = pGrid->B2i[k][j][is];
+
+        pGrid->B2i[k][j][is-i] = 0;
+
       }
     }
   }
@@ -1572,11 +1658,193 @@ static void inX1BoundCond(GridS *pGrid)
   for (k=ks; k<=ku; k++) {
     for (j=js; j<=je; j++) {
       for (i=1; i<=nghost; i++) {
+
         pGrid->B3i[k][j][is-i] = pGrid->B3i[k][j][is];
+
+//        pGrid->B3i[k][j][is-i] = 0;
+
       }
     }
   }
 #endif /* MHD */
 
   return;
+}
+
+
+static void diode_outflow_ix3(GridS *pGrid)
+{
+  int is = pGrid->is, ie = pGrid->ie;
+  int js = pGrid->js, je = pGrid->je;
+  int ks = pGrid->ks;
+  int i,j,k;
+
+  for (k=1; k<=nghost; k++) {
+    for (j=js-nghost; j<=je+nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->U[ks-k][j][i] = pGrid->U[ks][j][i];
+        pGrid->U[ks-k][j][i].M3 = MIN(pGrid->U[ks-k][j][i].M3,0.0);
+      }
+    }
+  }
+
+
+
+#ifdef MHD
+/* B1i is not set at i=is-nghost */
+  for (k=1; k<=nghost; k++) {
+    for (j=js-nghost; j<=je+nghost; j++) {
+      for (i=is-(nghost-1); i<=ie+nghost; i++) {
+        pGrid->B1i[ks-k][j][i] = pGrid->B1i[ks][j][i];
+      }
+    }
+  }
+
+/* B2i is not set at j=js-nghost */
+  for (k=1; k<=nghost; k++) {
+    for (j=js-(nghost-1); j<=je+nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->B2i[ks-k][j][i] = pGrid->B2i[ks][j][i];
+      }
+    }
+  }
+
+/* B3i is not set at k=ks-nghost */
+  for (k=1; k<=nghost-1; k++) {
+    for (j=js-nghost; j<=je+nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->B3i[ks-k][j][i] = pGrid->B3i[ks][j][i];
+      }
+    }
+  }
+#endif /* MHD */
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void outflow_ox3(GridS *pGrid)
+ *  \brief OUTFLOW boundary conditions, Outer x3 boundary (bc_ox3=2) */
+
+static void diode_outflow_ox3(GridS *pGrid)
+{
+  int is = pGrid->is, ie = pGrid->ie;
+  int js = pGrid->js, je = pGrid->je;
+  int ke = pGrid->ke;
+  int i,j,k;
+
+  for (k=1; k<=nghost; k++) {
+    for (j=js-nghost; j<=je+nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->U[ke+k][j][i] = pGrid->U[ke][j][i];
+
+        pGrid->U[ke+k][j][i].M3 = MAX(pGrid->U[ke+k][j][i].M3,0.0);
+
+      }
+    }
+  }
+
+  //  pGrid->U[k][j][is-i].M1 = MIN(pGrid->U[k][j][is-i].M1,0.0);
+
+#ifdef MHD
+/* B1i is not set at i=is-nghost */
+  for (k=1; k<=nghost; k++) {
+    for (j=js-nghost; j<=je+nghost; j++) {
+      for (i=is-(nghost-1); i<=ie+nghost; i++) {
+        pGrid->B1i[ke+k][j][i] = pGrid->B1i[ke][j][i];
+      }
+    }
+  }
+
+/* B2i is not set at j=js-nghost */
+  for (k=1; k<=nghost; k++) {
+    for (j=js-(nghost-1); j<=je+nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->B2i[ke+k][j][i] = pGrid->B2i[ke][j][i];
+      }
+    }
+  }
+
+/* k=ke+1 is not a boundary condition for the interface field B3i */
+  for (k=2; k<=nghost; k++) {
+    for (j=js-nghost; j<=je+nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->B3i[ke+k][j][i] = pGrid->B3i[ke][j][i];
+      }
+    }
+  }
+#endif /* MHD */
+
+  return;
+}
+
+
+
+
+static void calcProblemParameters(){
+    MSOLYR = 1.989e33/YR;
+    SGMB = ARAD*CL/4;
+
+    MBH_in_gram = M2Msun*MSUN;
+    Rg = 2*GRV*MBH_in_gram/pow(CL,2);
+    r0*=Rg;
+
+    Nsc=nc0;
+    Tx=1.0e8; //Compton temperature
+    	Tgmin = 2.3;
+
+    	Dsc = nc0*M_MW*	M_U;
+    	xm =1.;
+        	r_in *= xm;
+
+       	Rsc = xm* r0;
+       	rgToR0 = Rg/Rsc;
+    //   	rgToR0 = 0.;
+
+    //   	printf("Rsc = %e \n", Rsc); apause();
+
+        	Usc = sqrt(GRV*MBH_in_gram/Rsc);
+        	Time0=sqrt( pow(Rsc,3) /GRV/MBH_in_gram);
+        	Evir0=Dsc*GRV*MBH_in_gram/Rsc;  //(erg/cm^3)
+        	Psc = Evir0;
+        	Esc = Psc;
+
+      	Tvir0=GRV*MBH_in_gram/RGAS/Rsc*M_MW;
+        	Lamd0=Evir0/Time0;  // (erg/cm^3/s)
+        	Ledd_e = 4.*PI *CL*GRV*MBH_in_gram/KPE;
+        	Lx = fx * F2Fedd*Ledd_e;
+        	Luv= fuv *F2Fedd*Ledd_e;
+
+    //  torus parameters
+
+        nAd = 1.0/Gamma_1;
+        	q1 = 2.0*(q-1.0);
+	#ifdef HAWL
+			   a1 = pow(xm, q1) /q1;
+			   Ctor = a1* pow(r_in,-q1) - xm/(r_in-rgToR0);
+			   Kbar = (Ctor + xm/(xm-rgToR0) - 1./q1) /(nAd+1);
+	#endif
+
+	#ifdef SOLOV
+			   Kbar_Sol =(1.5 + Br0_Sol)/(1 + nAd);
+			   Kbar = Kbar_Sol;
+	#endif
+
+//    	printf( " %e %e %e %e\n", Dsc, nc0, M_MW, M_U);
+	printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
+}
+
+static void printProblemParameters(){
+	#ifdef SOLOV
+	  printf("solov is not implemented"); getchar();
+	#endif
+
+	printf("parameters \n");
+
+	printf("F2Fedd = %e \n", F2Fedd);
+	printf("nc0 = %e \n", nc0);
+	printf("R0 = %e * R_g \n", r0);
+	printf("Ctor, Kbar= %e %e \n", Ctor, Kbar );
+
+//	getchar();
 }

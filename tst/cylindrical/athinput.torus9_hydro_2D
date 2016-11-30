@@ -11,17 +11,21 @@ maxout          = 3          # Output blocks number from 1 -> maxout
 
 <output1>
 out_fmt = bin               # Binary data dump
-dt      = 2             # time increment between outputs
+dt      = 0.1             # time increment between outputs
+
+<output2>
+out_fmt = rst               # Restart data dump
+dt      = 0.25             # time increment between outputs
 
 <time>
-cour_no         = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
+cour_no         = 0.40       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim            = 10000000     # cycle limit
 tlim            = 200.0      # time limit
 
 
 <domain1>
 level           = 0            # refinement level this Domain (root=0)
-Nx1             = 32           # Number of zones in X-direction
+Nx1             = 64           # Number of zones in X-direction
 x1min           = 0.1          # minimum value of X1 (radial coord)
 x1max           = 5            # maximum value of X1 (radial coord)
 bc_ix1          = 2     	   # inner-I (R) boundary flag
@@ -33,9 +37,9 @@ x2max           = .785398         # maximum value of X2 (theta coord; radians)
 bc_ix2          = 4            # inner-J (PHI) boundary flag
 bc_ox2          = 4            # outer-J (PHI) boundary flag
 
-Nx3             = 32           # Number of zones in X3-direction
-x3min           = -5.0         # minimum value of X3
-x3max           = 5.0          # maximum value of X3
+Nx3             = 64           # Number of zones in X3-direction
+x3min           = -2.50         # minimum value of X3
+x3max           = 2.50          # maximum value of X3
 bc_ix3          = 2             # inner-K (Z) boundary flag
 bc_ox3          = 2             # outer-K (Z) boundary flag
 	
@@ -45,18 +49,18 @@ NGrid_x2 = 1
 NGrid_x3 = 1
 
 <problem>
-F2Fedd = 0. #L/Ledd
+F2Fedd = 0.1 #L/Ledd
 fx =0.5
 fuv =0.5
 nc0 = 1.0e8             #NUMBER DENSITY AT maximum
 M2Msun =1.0e7        #BH mass in Msol
 gamma           = 1.6666666667   # gamma = C_p/C_v
 q               = 1.68
-r0              = 1.0e6             # Radius of pressure max in rg
+r0              = 1.0e5             # Radius of pressure max in rg
 r_in            = 0.51            # Inner radius of torus 0.51
 rho0            = 1.0e-5	        # Background density 1e-2
 e0              = 1.0e-4         # Background energy
-dcut            = 0.001		             #Density cutoff for magnetic field
+dcut            = 1.e-3		 #Density cutoff for magnetic field -3
 beta            = 100.0          # Value of beta=Pgas/Pb 100
 seed            = 0.01           # Pressure fluctuations, 1%
 

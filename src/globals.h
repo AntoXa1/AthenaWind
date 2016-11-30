@@ -23,10 +23,16 @@ Real Gamma;                  /*!< adiabatic index (ratio of specific heats) */
 Real Gamma_1, Gamma_2;       /*!< (Gamma)-1 and (Gamma)-2 */
 #endif
 int myID_Comm_world; /*!< Rank (proc ID) in MPI_COMM_WORLD, 0 for single proc */
+
 Real d_MIN = TINY_NUMBER;    /*!< density floor */
 
+//Real d_MIN = 0.001;
+
+
 GravPotFun_t StaticGravPot = NULL;
+
 CoolingFun_t CoolingFunc = NULL;
+
 #ifdef SELF_GRAVITY
 Real four_pi_G, grav_mean_rho;    /*!< 4\pi G and mean density in domain */
 #endif
@@ -63,9 +69,13 @@ Real nu_STS;			/*!< parameter controlling the substeps  */
 Real STS_dt;			/*!< STS time step */
 #endif
 
+
 #ifdef CYLINDRICAL
-// StaticGravAcc_t x1GravAcc = NULL;
+
+StaticGravAcc_t    x1GravAcc = NULL;
+
 Real *r=NULL, *ri=NULL;
+
 #ifdef FARGO
 OrbitalFun_t OrbitalProfile = NULL;
 ShearFun_t ShearProfile = NULL;
@@ -125,8 +135,9 @@ extern Real nu_STS, STS_dt;
 #endif
 
 #ifdef CYLINDRICAL
-// extern StaticGravAcc_t x1GravAcc;
-extern Real *r, *ri;
+ extern StaticGravAcc_t x1GravAcc;
+ extern Real *r, *ri;
+
 #ifdef FARGO
 extern OrbitalFun_t OrbitalProfile;
 extern ShearFun_t ShearProfile;

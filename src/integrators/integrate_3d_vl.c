@@ -101,6 +101,13 @@ static void ApplyCorr(GridS *pG, int i, int j, int k,
                       int lx1, int rx1, int lx2, int rx2, int lx3, int rx3);
 #endif
 
+#ifdef XRAYS
+
+//Real coolfl,coolfr,,Eh=0.0;
+Real coolf, res;
+
+#endif
+
 /*=========================== PUBLIC FUNCTIONS ===============================*/
 /*----------------------------------------------------------------------------*/
 /*! \fn void integrate_3d_vl(DomainS *pD)
@@ -283,6 +290,7 @@ void integrate_3d_vl(DomainS *pD)
 /*--- Step 2c ------------------------------------------------------------------
  * No source terms needed
  */
+
 
 /*--- Step 2d ------------------------------------------------------------------
  * Compute flux in x2-direction */
@@ -657,6 +665,14 @@ void integrate_3d_vl(DomainS *pD)
           Uhalf[k][j][i].E -= q3*(x3Flux[k  ][j][i].d*(phic - phil)
                                 + x3Flux[k+1][j][i].d*(phir - phic));
 #endif
+
+#ifdef XRAYS
+          coolf = (*CoolingFunc)(  Uhalf[k][j][i].d,   Gamma_1*Uhalf[k][j][i].E,   hdt,
+        		  pG->xi[k][j][i],  KEY_P);
+          Uhalf[k][j][i].E -= hdt*coolf;
+#endif
+
+
         }
       }
     }
@@ -1458,6 +1474,19 @@ void integrate_3d_vl(DomainS *pD)
           pG->U[k][j][i].E -= dtodx3*(x3Flux[k  ][j][i].d*(phic - phil)
                                     + x3Flux[k+1][j][i].d*(phir - phic));
 #endif
+
+#ifdef XRAYS
+          coolf = (*CoolingFunc)(  Uhalf[k][j][i].d,   Gamma_1*Uhalf[k][j][i].E,   pG->dt,
+        		  pG->xi[k][j][i],  KEY_P);
+
+          res= Uhalf[k][j][i].E;
+
+          Uhalf[k][j][i].E -= pG->dt*coolf;
+          if (coolf > 0.){
+//        	  printf("%e %e %e\n",coolf, res, Uhalf[k][j][i].E);
+          }
+#endif
+
         }
       }
     }

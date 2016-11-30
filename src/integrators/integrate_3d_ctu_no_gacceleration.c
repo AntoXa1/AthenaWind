@@ -263,13 +263,31 @@ void integrate_3d_ctu(DomainS *pD)
 #endif /* CYLINDRICAL */
      }
 
+
+//     printf("(%d) %f, %f %f \n", i , Wl[i].P, Wl[i].By,Wl[i].Bz);
+
      lr_states(pG,W,Bxc,pG->dt,pG->dx1,il+1,iu-1,Wl,Wr,1);
+
+
+     if (Wl[i].P > 10) {
+		printf("P is big in ctu (%d) %f, %f %f \n", i , Wl[i].P, Wl[i].By,Wl[i].Bz);
+		getchar();
+ }
+
+//     printf(" d_MIN=  %f \n", d_MIN); getchar();
 
 /* Apply density floor */
      for (i=il+1; i<=iu; i++){
-       if (Wl[i].d < d_MIN) {
+
+
+    	 /////////////
+
+
+
+    	 if (Wl[i].d < d_MIN) {
          Wl[i].d = d_MIN;
        }
+
        if (Wr[i].d < d_MIN) {
          Wr[i].d = d_MIN;
        }
@@ -353,6 +371,8 @@ void integrate_3d_ctu(DomainS *pD)
 
           gl = 2.0*(phifc - phicl)*dx1i;
           gr = 2.0*(phicr - phifc)*dx1i;
+
+
 #if defined(CYLINDRICAL) && defined(FARGO)
           gl -= r[i-1]*SQR((*OrbitalProfile)(r[i-1]));
           gr -= r[i  ]*SQR((*OrbitalProfile)(r[i  ]));
@@ -381,11 +401,31 @@ void integrate_3d_ctu(DomainS *pD)
 #ifndef BAROTROPIC
       if (CoolingFunc != NULL){
         for (i=il+1; i<=iu; i++) {
+        	 if ( isnan(Wl[i].P) || isnan( Wr[i].P) ) { printf("P_i is nan i %d  \n", i);getchar();}
+#ifdef XRAYS
+          coolfl = (*CoolingFunc)(Wl[i].d,Wl[i].P,(0.5*pG->dt), pG->xi[k][j][i],  KEY_P);
+          coolfr = (*CoolingFunc)(Wr[i].d,Wr[i].P,(0.5*pG->dt), pG->xi[k][j][i], KEY_P);
+#else
           coolfl = (*CoolingFunc)(Wl[i].d,Wl[i].P,(0.5*pG->dt));
           coolfr = (*CoolingFunc)(Wr[i].d,Wr[i].P,(0.5*pG->dt));
+#endif
+          if (coolfl != 0. || coolfr !=0.) printf("Cool f, 3dctu: %f %f \n", coolfl, coolfr);
 
           Wl[i].P -= 0.5*pG->dt*Gamma_1*coolfl;
+
           Wr[i].P -= 0.5*pG->dt*Gamma_1*coolfr;
+
+//          if(Wr[i].P>10){
+//        	  printf(" P is big \n");
+//          }
+
+
+
+          Wl[i].P = (Wl[i].P > TINY_NUMBER) ? Wl[i].P : TINY_NUMBER;
+          Wr[i].P = (Wr[i].P > TINY_NUMBER) ? Wr[i].P : TINY_NUMBER;
+
+          if ( Wl[i].P<0 ||  Wr[i].P <0 ){ printf("3d ctu : P_i is neg  ");getchar();}
+
         }
       }
 #endif /* BAROTROPIC */
@@ -709,11 +749,36 @@ void integrate_3d_ctu(DomainS *pD)
 #ifndef BAROTROPIC
       if (CoolingFunc != NULL){
         for (j=jl+1; j<=ju; j++) {
+
+        	if ( isnan(Wl[j].P) || isnan( Wr[j].P) ) { printf("3d ctu : P_i is nan j ");getchar();}
+
+#ifdef XRAYS
+          coolfl = (*CoolingFunc)(Wl[j].d,Wl[j].P,(0.5*pG->dt), pG->xi[k][j][i],KEY_P);
+          coolfr = (*CoolingFunc)(Wr[j].d,Wr[j].P,(0.5*pG->dt), pG->xi[k][j][i],KEY_P);
+#else
           coolfl = (*CoolingFunc)(Wl[j].d,Wl[j].P,(0.5*pG->dt));
           coolfr = (*CoolingFunc)(Wr[j].d,Wr[j].P,(0.5*pG->dt));
+#endif
+
+          if (coolfl != 0. || coolfr !=0.) printf("3d ctu : %f %f \n", coolfl, coolfr);
 
           Wl[j].P -= 0.5*pG->dt*Gamma_1*coolfl;
           Wr[j].P -= 0.5*pG->dt*Gamma_1*coolfr;
+
+
+
+//    	  Real P_min =  Wl[j].d * sqrt( pow(Wl[j].Vx,2) +pow(Wl[j].Vy,2) +pow(Wl[j].Vz,2));
+//    	  if ( Wl[j].P< P_min){
+//    		  printf("%e %e \n",  Wl[j].P, P_min ); //getchar();
+//    	  }
+
+          Wl[j].P = (Wl[j].P > TINY_NUMBER) ? Wl[j].P : TINY_NUMBER;
+          Wr[j].P = (Wr[j].P > TINY_NUMBER) ? Wr[j].P : TINY_NUMBER;
+
+          if ( Wl[j].P<0 ||  Wr[j].P <0 ){
+        	  	  printf("3d ctu : P_j is neg %e %e \n",Wl[j].P,Wr[j].P );getchar();
+          }
+
         }
       }
 #endif /* BAROTROPIC */
@@ -903,11 +968,24 @@ void integrate_3d_ctu(DomainS *pD)
 #ifndef BAROTROPIC
       if (CoolingFunc != NULL){
         for (k=kl+1; k<=ku; k++) {
-          coolfl = (*CoolingFunc)(Wl[k].d,Wl[k].P,(0.5*pG->dt));
-          coolfr = (*CoolingFunc)(Wr[k].d,Wr[k].P,(0.5*pG->dt));
+        	if ( isnan(Wl[k].P) || isnan( Wr[k].P) ) { printf("3d ctu :P_i is nan k  ");getchar();}
+
+#ifdef XRAYS
+        	  coolfl = (*CoolingFunc)(Wl[k].d,Wl[k].P,(0.5*pG->dt), pG->xi[k][j][i],KEY_P);
+          coolfr = (*CoolingFunc)(Wr[k].d,Wr[k].P,(0.5*pG->dt), pG->xi[k][j][i],KEY_P);
+#else
+    	  coolfl = (*CoolingFunc)(Wl[k].d,Wl[k].P,(0.5*pG->dt));
+      coolfr = (*CoolingFunc)(Wr[k].d,Wr[k].P,(0.5*pG->dt));
+#endif
+          if (coolfl != 0. || coolfr !=0.) printf(" coolfl 3d ctu : %f %f \n", coolfl, coolfr);
 
           Wl[k].P -= 0.5*pG->dt*Gamma_1*coolfl;
           Wr[k].P -= 0.5*pG->dt*Gamma_1*coolfr;
+
+          Wl[k].P = (Wl[k].P > TINY_NUMBER) ? Wl[k].P : TINY_NUMBER;
+          Wr[k].P = (Wr[k].P > TINY_NUMBER) ? Wr[k].P : TINY_NUMBER;
+
+          if ( Wl[k].P<0 ||  Wr[k].P <0 ){ printf("3d ctu P_k is neg ");getchar();}
         }
       }
 #endif /* BAROTROPIC */
@@ -3162,8 +3240,21 @@ void integrate_3d_ctu(DomainS *pD)
     for (k=ks; k<=ke; k++){
       for (j=js; j<=je; j++){
         for (i=is; i<=ie; i++){
-          coolf = (*CoolingFunc)(dhalf[k][j][i],phalf[k][j][i],pG->dt);
-          pG->U[k][j][i].E -= pG->dt*coolf;
+        	 if ( isnan(pG->U[k][j][i].E)  ) { printf("E_kji is nan i  ");getchar();}
+
+#ifdef XRAYS
+        	coolf = (*CoolingFunc)(dhalf[k][j][i],phalf[k][j][i],pG->dt, pG->xi[k][j][i],KEY_E);
+#else
+        	coolf = (*CoolingFunc)(dhalf[k][j][i],phalf[k][j][i],pG->dt);
+#endif
+        	pG->U[k][j][i].E -= pG->dt*coolf;
+
+          pG->U[k][j][i].E  = (pG->U[k][j][i].E  > TINY_NUMBER) ? pG->U[k][j][i].E  : TINY_NUMBER;
+
+         if (coolf != 0. ) printf("%e \n", coolf);
+
+          if ( pG->U[k][j][i].E <0. ){ printf("E_kji is neg ");getchar();}
+
         }
       }
     }

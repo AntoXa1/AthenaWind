@@ -26,7 +26,7 @@
 #define A_PROBLEM "@PROBLEM@"
 
 /* radiation or not :: Anton */
-/* #define XRAYS  */
+#define XRAYS
 
 /* HYDRO or MHD */
 #define @GAS@

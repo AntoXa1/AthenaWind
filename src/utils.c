@@ -244,6 +244,12 @@ Real compute_div_b(GridS *pG)
         if (ke > ks)
           divB += (pG->B3i[k+1][j][i] - pG->B3i[k][j][i])/pG->dx3;
 
+if (divB>1e-5) {
+	printf("DivB= (%d %d %d) (%f %f %f %f %f) \n",  i,j,k, divB,
+			pG->B1i[k][j][i], pG->B2i[k][j][i], pG->B3i[k][j][i], pG->U[k][j][i].d);
+
+//	getchar();
+}
         maxdivB = MAX(maxdivB,fabs(divB));
       }
     }

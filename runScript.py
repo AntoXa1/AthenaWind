@@ -3,15 +3,19 @@
 import subprocess as subproc
 import sys
 
-# caseToDo = 'torus_hd'
+#caseToDo = 'torus_hd'
+
 caseToDo = 'torus_mhd'
-# caseToDo = 'hkdisk_mhd'
-# caseToDo = 'hkdisk_hd'
+
+#caseToDo = 'hkdisk_mhd'        
+
+#caseToDo = 'hkdisk_hd'
 
 #./configure --with-coord=cylindrical --with-problem=cylwindrotb
 
+
 PATH_BASE='/Users/dora/WORK/ECLIPSE_SPACE/'
-PATH_BASE = "/Users/dora/WORK/ECLIPSE_SPACE/AthenaWind"
+PATH_BASE = '/Users/dora/WORK/ECLIPSE_SPACE/AthenaWind'
 
 import socket
 name=socket.gethostname()
@@ -39,16 +43,14 @@ if caseToDo == '2':
 
 if caseToDo == '3':    
     problemToConfig = '--with-problem=torus9'
-
-    methodGasOrMHD =  '--with-gas=hydro'
-    
+    methodGasOrMHD =  '--with-gas=hydro'    
     inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
 
 if caseToDo == 'hkdisk_mhd':    
     problemToConfig = '--with-problem=hkdisk'
     methodGasOrMHD =  '--with-gas=mhd'
     inputFile = '../tst/cylindrical/athinput.hkdisk-3D'
-
+    
 if caseToDo == 'hkdisk_hd':
     problemToConfig = '--with-problem=hkdisk'
     methodGasOrMHD =  '--with-gas=hydro'
@@ -59,6 +61,8 @@ if caseToDo == 'torus_hd':
     problemToConfig = '--with-problem=torus9'
     methodGasOrMHD =  '--with-gas=hydro'    
     inputFileList = ['../tst/cylindrical/athinput.torus9_hydro_2D', '../tst/cylindrical/athinput.torus9_hydro_2D_2']
+    inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
+    
 
 if caseToDo == 'torus_mhd':    
     problemToConfig = '--with-problem=torus9'
@@ -66,19 +70,34 @@ if caseToDo == 'torus_mhd':
     methodGasOrMHD =  '--with-gas=mhd'
     
     inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
+    
 
-
-inputFile = '../tst/cylindrical/athinput.torus9_hydro_2D'
 subproc.check_call(['rm', '-f', './bin/*.bin'])
 
+ 
+if caseToDo == 'torus_hd':
+    METHOD = '--with-flux=roe'
+else:
+   METHOD = '--with-flux=hlld'
+   
+    # METHOD = '--with-flux=hlle'
+    
+   ORDER = '--with-order=2p'
+    
+#   ORDER = '--with-order=3p'
 
-METHOD = '--with-flux=hlld'
-#METHOD = '--with-flux=roe'
+   Integrator = '--with-integrator=vl'
+
 compLev = '0123'
+
+#compLev = '012'
 
 
 if '0' in compLev:
-    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',methodGasOrMHD, METHOD, problemToConfig])
+    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',Integrator, methodGasOrMHD, METHOD, ORDER, problemToConfig])
+
+#    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical', methodGasOrMHD, METHOD, ORDER, problemToConfig])
+    
 
 if '1' in compLev:
     subproc.check_call(['make', 'clean'])

@@ -50,6 +50,8 @@
 
 static Real **pW=NULL, **dWm=NULL, **Wim1h=NULL;
 
+#define debug1
+
 /*----------------------------------------------------------------------------*/
 /*! \fn void lr_states(const GridS* pG, const Prim1DS W[], const Real Bxc[],
  *               const Real dt, const Real dx, const int il, const int iu,
@@ -455,6 +457,15 @@ void lr_states(const GridS* pG __attribute__((unused)),
     for (n=0; n<(NWAVE+NSCALARS); n++) {
       Wlv[n] = Wim1h[i  ][n];
       Wrv[n] = Wim1h[i+1][n];
+
+#ifdef debug1
+
+      if (  isnan(Wlv[n]) ||   isnan( Wrv[n]) ) {
+    	  	  printf("nan at Step 15  ppm: %d %d %f %f ", i, n, Wlv[n],  Wrv[n]);
+    	  	  getchar();
+      }
+#endif
+
     }
 
 /*--- Step 16. -----------------------------------------------------------------
@@ -485,6 +496,15 @@ void lr_states(const GridS* pG __attribute__((unused)),
       Wlv[n] = MIN(MAX(pW[i][n],pW[i-1][n]),Wlv[n]);
       Wrv[n] = MAX(MIN(pW[i][n],pW[i+1][n]),Wrv[n]);
       Wrv[n] = MIN(MAX(pW[i][n],pW[i+1][n]),Wrv[n]);
+
+#ifdef debug1
+
+      if ( isnan( Wlv[n]) ||  isnan( Wrv[n]) ) {
+    	  	  printf("nan at Step 16  ppm: %d %d %f %f ", i, n, Wlv[n], Wrv[n]);
+    	  	  getchar();
+      }
+#endif
+
     }
 
 /*--- Step 17. -----------------------------------------------------------------
@@ -499,9 +519,12 @@ void lr_states(const GridS* pG __attribute__((unused)),
  * Integrate linear interpolation function over domain of dependence defined by
  * max(min) eigenvalue (CW eqn 1.12)
  */
+//    pWl_old =
+
 
     pWl = (Real *) &(Wl[i+1]);
     pWr = (Real *) &(Wr[i]);
+
 
 #ifndef CTU_INTEGRATOR 
 
@@ -519,6 +542,8 @@ void lr_states(const GridS* pG __attribute__((unused)),
       qxx1 = SQR(qx1)*dx/(3.0*(ri[i+1]-dx*qx1));
 #endif
     for (n=0; n<(NWAVE+NSCALARS); n++) {
+//    	 pWl_old[n] = Wrv[n]
+
       pWl[n] = Wrv[n] - qx1 *(dW[n] - (1.0-FOUR_3RDS*qx1)*W6[n])
                       + qxx1*(dW[n] - (1.0-      2.0*qx1)*W6[n]);
     }
@@ -530,6 +555,9 @@ void lr_states(const GridS* pG __attribute__((unused)),
       qxx2 = SQR(qx2)*dx/(3.0*(ri[i]+dx*qx2));
 #endif
     for (n=0; n<(NWAVE+NSCALARS); n++) {
+
+    	//    	 pWr_old[n] = Wlv[n] ;
+
       pWr[n] = Wlv[n] + qx2 *(dW[n] + (1.0-FOUR_3RDS*qx2)*W6[n])
                       + qxx2*(dW[n] + (1.0-      2.0*qx2)*W6[n]);
     }
@@ -600,7 +628,12 @@ void lr_states(const GridS* pG __attribute__((unused)),
         for (m=0; m<NWAVE; m++) {
           qa += lem[n][m]*(qb*(dW[m]+W6[m]) + qc*W6[m]);
         }
-        for (m=0; m<NWAVE; m++) pWr[m] += qa*rem[m][n];
+        for (m=0; m<NWAVE; m++){
+        		pWr[m] += qa*rem[m][n];
+        }
+
+
+//        ****
 
 /* For HLL fluxes, subtract wave moving away from interface to 2nd order */
 #if defined(HLLE_FLUX) || defined(HLLC_FLUX) || defined(HLLD_FLUX) || defined(FORCE_FLUX)
@@ -617,7 +650,21 @@ void lr_states(const GridS* pG __attribute__((unused)),
         for (m=0; m<NWAVE; m++) {
           qa += lem[n][m]*qx*dW[m];
         }
-        for (m=0; m<NWAVE; m++) pWl[m] += qa*rem[m][n];
+        for (m=0; m<NWAVE; m++) {
+        	pWl[m] += qa*rem[m][n];
+
+#ifdef debug1
+
+      if ( isnan( pWl[m]) ){
+    	  	  printf("nan at Step 19  ppm, pWl, : %d %d %f ", i, m, pWl[m]);
+    	  	  getchar();
+      }
+#endif
+
+
+        }
+
+
 #endif /* HLL_FLUX */
 
       }
@@ -641,6 +688,7 @@ void lr_states(const GridS* pG __attribute__((unused)),
 #endif
         pWl[n] += qb*(dW[n]-W6[n]) + qc*W6[n];
 
+
       } else if (W[i].Vx < 0.) {
 
         qx1 = 0.5*dtodx*ev[0];
@@ -656,6 +704,8 @@ void lr_states(const GridS* pG __attribute__((unused)),
         }
 #endif
         pWr[n] += qb*(dW[n]+W6[n]) + qc*W6[n];
+
+
 
       }
     }

@@ -20,13 +20,13 @@
  *  (user modified via configure) */
 
 /* Version identifier when configure was last run */
-#define CONFIGURE_DATE "Tue Oct 25 16:06:57 EDT 2016"
+#define CONFIGURE_DATE "Tue Nov 29 15:02:46 EST 2016"
 
 /* Problem generator with which Athena is compiled */
 #define A_PROBLEM "torus9"
 
 /* radiation or not :: Anton */
-/* #define XRAYS  */
+#define XRAYS
 
 /* HYDRO or MHD */
 #define MHD
@@ -66,7 +66,7 @@
 
 /* order of spatial reconstruction: FIRST_ORDER,
  * SECOND_ORDER_CHAR, SECOND_ORDER_PRIM, THIRD_ORDER_CHAR, THIRD_ORDER_PRIM */
-#define THIRD_ORDER_CHAR
+#define SECOND_ORDER_PRIM
 
 /* flux type
  * ROE_FLUX, HLLE_FLUX, HLLC_FLUX, HLLD_FLUX, FORCE_FLUX, EXACT_FLUX,
@@ -75,7 +75,7 @@
 
 /* unsplit integrator:
  * CTU_INTEGRATOR or VL_INTEGRATOR */
-#define CTU_INTEGRATOR
+#define VL_INTEGRATOR
 
 /* Real: DOUBLE_PREC or SINGLE_PREC */
 #define DOUBLE_PREC

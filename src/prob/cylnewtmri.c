@@ -580,7 +580,7 @@ void disk_ir(GridS *pGrid) {
 #endif
 	Real Vkep,R,p,z, RBr, Lper;
 
-  for (k=ks; k<=ke; k++) {
+  for (k=ks; k<=ke; k++)w {
     for (j=js; j<=je; j++) {
     	cc_pos(pGrid,is,j,k,&R,&p,&z);
 #ifdef MHD
@@ -852,7 +852,7 @@ static void dump_vtksub(MeshS *pM, OutputS *pOut) {
 			pGrid->time, 0, 0);
 
 	/*  3. File format */
-
+		
 	fprintf(pfile, "BINARY\n");
 
 	/*  4. Dataset structure */

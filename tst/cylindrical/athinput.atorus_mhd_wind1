@@ -58,7 +58,7 @@ NGrid_x2 = 2
 NGrid_x3 = 5
 
 <problem>
-nc0 = 1.0e8             #number density at maximum
+nc0 = 1.0e10             #number density at maximum
 M2Msun =1.0e8        #BH mass in Msol
 gamma           = 1.6666666667   # gamma = C_p/C_v
 q               = 2 #1.68
@@ -70,3 +70,4 @@ e0              = 1.0e-4         # Background energy
 dcut            = 0.01            # Density cutoff for magnetic field
 beta            = 100.0          # Value of beta=Pgas/Pb
 seed            = 0.01           # Pressure fluctuations, 1%
+F2Fedd          = 0.1
