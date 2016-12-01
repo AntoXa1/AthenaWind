@@ -82,7 +82,6 @@ if caseToDo == 'torus_mhd':
  
 subproc.check_call(['rm', '-f', './bin/*.bin'])
 
-METHOD = '--with-flux=hlld'
 compLev = '0123'
 MPI = True
 MPI = False
