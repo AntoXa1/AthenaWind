@@ -93,7 +93,7 @@ if '0' in compLev:
     if MPI:
        subproc.check_call([PATH+'./configure', '--enable-mpi', '--with-coord=cylindrical',methodGasOrMHD, METHOD, problemToConfig])
     else:
-       subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',Integrator, methodGasOrMHD, METHOD, ORDER, problemToConfig])
+        subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',Integrator, '--enable-fofc', methodGasOrMHD, METHOD, ORDER, problemToConfig])
                 
 if '1' in compLev:
     subproc.check_call(['make', 'clean'])

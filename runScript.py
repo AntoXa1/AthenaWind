@@ -94,7 +94,7 @@ compLev = '0123'
 
 
 if '0' in compLev:
-    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',Integrator, methodGasOrMHD, METHOD, ORDER, problemToConfig])
+    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',Integrator, '--enable-fofc', methodGasOrMHD, METHOD, ORDER, problemToConfig])
 
 #    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical', methodGasOrMHD, METHOD, ORDER, problemToConfig])
     
