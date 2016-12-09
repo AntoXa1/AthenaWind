@@ -20,7 +20,7 @@
  *  (user modified via configure) */
 
 /* Version identifier when configure was last run */
-#define CONFIGURE_DATE "Tue Nov 29 15:02:46 EST 2016"
+#define CONFIGURE_DATE "Wed Nov 30 18:26:14 EST 2016"
 
 /* Problem generator with which Athena is compiled */
 #define A_PROBLEM "torus9"
@@ -112,7 +112,7 @@
 
 /* First order flux correction in VL integrator:
  * FIRST_ORDER_FLUX_CORRECTION or NO_FIRST_ORDER_FLUX_CORRECTION */
-#define NO_FIRST_ORDER_FLUX_CORRECTION
+#define FIRST_ORDER_FLUX_CORRECTION
 
 /*----------------------------------------------------------------------------*/
 /* macros associated with numerical algorithm (rarely modified) */

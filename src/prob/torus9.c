@@ -19,11 +19,13 @@
 
 //****************************************
 
-#define HAWL
-//#define SOLOV
-#if !defined(HAWL)
-	#define SOLOV
-#endif
+//#define HAWL
+
+#define SOLOV
+
+//#if !defined(HAWL)
+//	#define SOLOV
+//#endif
 
 
 //****************************************
@@ -1587,9 +1589,11 @@ static void inX1BoundCond(GridS *pGrid)
       for (i=1; i<=nghost; i++) {
 
 
+#ifdef show_debug_messages
     	  if( (pGrid->U[k][j][i].d < rho0) ||  (pGrid->U[k][j][i].d > 3.) ) {
-    		  printf("at BC: %e \n", pGrid->U[k][j][i].d );
+    		  printf("negative density at BC: %e \n", pGrid->U[k][j][i].d );
     	  }
+#endif
 
     	  cc_pos(pGrid,is,j,k,&x1,&x2,&x3);
 
@@ -1602,7 +1606,7 @@ static void inX1BoundCond(GridS *pGrid)
 
     	  	  // printf("%d %d\n", nghost, is); getchar();
 
-    	  	  pGrid->U[k][j][is-i] = pGrid->U[k][j][is];
+    	  	 pGrid->U[k][j][is-i] = pGrid->U[k][j][is];
     	  	 pGrid->U[k][j][is-i].M1 = MIN(pGrid->U[k][j][is-i].M1,0.0);
 
 //    	  	  if (pGrid->U[k][j][is].M1 > 0.) {
@@ -1610,7 +1614,7 @@ static void inX1BoundCond(GridS *pGrid)
 //    	  	  }
 
     	      pGrid->U[k][j][is-i].M2 =  pGrid->U[k][j][is].d * sqrt(rad) / (rad-rgToR0);
-    	      pGrid->U[k][j][is-i].M2 =  pGrid->U[k][j][is].d * sqrt(  1 /  (rad-rgToR0 ) );
+    	      pGrid->U[k][j][is-i].M2 =  pGrid->U[k][j][is].d * sqrt(  1 / (rad-rgToR0 ) );
 
 
 
@@ -1835,9 +1839,9 @@ static void calcProblemParameters(){
 }
 
 static void printProblemParameters(){
-	#ifdef SOLOV
-	  printf("solov is not implemented"); getchar();
-	#endif
+//	#ifdef SOLOV
+//	  printf("solov is not implemented"); getchar();
+//	#endif
 
 	printf("parameters \n");
 
