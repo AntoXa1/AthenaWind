@@ -1,11 +1,11 @@
-//#define XRAYS
+
 
 
 #ifndef GLOBALS_H
 #define GLOBALS_H  
 /*============================================================================*/
 /*! \file globals.h
- *  \brief Contains global variables.
+ *  \brief Contans global variables.
  *
  * PURPOSE: Contains global variables:
  *   The first occurence in this file is included in main.c and defines the

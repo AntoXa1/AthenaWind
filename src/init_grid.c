@@ -86,6 +86,7 @@ void init_grid(MeshS *pM)
       if(pG->Nx[0] > 1) {
         pG->is = nghost;
         pG->ie = pG->Nx[0] + nghost - 1;
+ 
       }
       else
         pG->is = pG->ie = 0;
@@ -110,6 +111,9 @@ void init_grid(MeshS *pM)
       if(pG->Nx[1] > 1) {
         pG->js = nghost;
         pG->je = pG->Nx[1] + nghost - 1;
+
+	/* printf("init_grid.c: %f %f \n", pG->js , pG->je ); */
+	/* getchar(); */
       }
       else
         pG->js = pG->je = 0;
@@ -196,7 +200,7 @@ void init_grid(MeshS *pM)
       if (pG->eta_AD == NULL) goto on_error7;
 #endif /* RESISTIVITY */
 
-/* Build 3D arrays related to Xray processing*/
+/* Build 3D arrays related to Xray processing */
 #ifdef XRAYS
       pG->xi = (Real***)calloc_3d_array(n3z, n2z, n1z, sizeof(Real));
       if (pG->xi == NULL) goto on_error_xrays_xi;
@@ -204,7 +208,6 @@ void init_grid(MeshS *pM)
       if (pG->tau_e == NULL) goto on_error_xrays_tau_e;
       pG->Tm = (Real***)calloc_3d_array(n3z, n2z, n1z, sizeof(Real));
       if (pG->Tm == NULL) goto on_error_xrays_Tm;
-
 #endif /* XRAYS */
 
 /* Build 3D arrays to gravitational potential and mass fluxes */

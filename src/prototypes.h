@@ -113,13 +113,16 @@ void fc_pos(const GridS *pG, const int i, const int j,const int k,
 #ifdef CYLINDRICAL
 Real x1vc(const GridS *pG, const int i);
 #endif
+
 #ifdef PARTICLES
+
 int celli(const GridS *pG, const Real x, const Real dx1_1, int *i, Real *a);
 Real x1cc(const GridS *pG, const int i);
 int cellj(const GridS *pG, const Real y, const Real dx2_1, int *j, Real *b);
 Real x2cc(const GridS *pG, const int j);
 int cellk(const GridS *pG, const Real z, const Real dx3_1, int *k, Real *c);
 Real x3cc(const GridS *pG, const int k);
+
 #endif
 
 /*----------------------------------------------------------------------------*/

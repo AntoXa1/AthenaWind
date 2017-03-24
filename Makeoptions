@@ -94,6 +94,14 @@ ifeq ($(MACHINE),zenith)
   FFTWLIB = -L/usr/local/fftw3 -lfftw3
   FFTWINC = -I/usr/local/fftw3
 else
+ifeq ($(MACHINE),macosxmpi)
+  CC  = /Users/dora/Applications/LIBS/openmpi/bin/mpicc
+  LDR = /Users/dora/Applications/LIBS/openmpi/bin/mpicc
+#  OPT = -O3
+  OPT = -g
+  MPIINC = -I/Users/dora/Applications/LIBS/openmpi/include
+  MPILIB = -L/Users/dora/Applications/LIBS/openmpi/lib -lmpi
+else
 ifeq ($(MACHINE),macosx)
   CC = gcc
   LDR = gcc
@@ -103,6 +111,7 @@ ifeq ($(MACHINE),macosx)
   FFTWINC = -I/opt/local/include
 else
   abort Unsupported MACHINE=$(MACHINE)
+endif
 endif
 endif
 endif

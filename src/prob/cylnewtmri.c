@@ -532,7 +532,7 @@ void ScaleToBeta(GridS *pG, Real beta) {
   for (k=ks; k<=ke; k++) {
     for (j=js; j<=je; j++) {
       for (i=is; i<=ie; i++) {
-				CellVol = (pG->r[i])*(pG->dx1)*(pG->dx2)*(pG->dx3);
+	CellVol = (pG->r[i])*(pG->dx1)*(pG->dx2)*(pG->dx3);
 #ifndef ISOTHERMAL
         Pgas += (Gamma-1)*pG->U[k][j][i].E*CellVol;
 #else
@@ -555,6 +555,7 @@ void ScaleToBeta(GridS *pG, Real beta) {
 #endif //PARALLEL
   //calculate and use scaling factor so that the correct beta is ensured
   scl = sqrt(TotPgas/(TotPb*beta));
+  
   for (k=kl; k<=ku; k++) {
     for (j=jl; j<=ju; j++) {
       for (i=il; i<=iu; i++) {

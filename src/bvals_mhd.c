@@ -528,12 +528,14 @@ void bvals_mhd_init(MeshS *pM)
   for (nl=0; nl<(pM->NLevels); nl++){
   for (nd=0; nd<(pM->DomainsPerLevel[nl]); nd++){
   if (pM->Domain[nl][nd].Grid != NULL) {
+    
     pD = (DomainS*)&(pM->Domain[nl][nd]);  /* ptr to Domain */
     pG = pM->Domain[nl][nd].Grid;          /* ptr to Grid */
+    
     irefine = 1;
     for (i=1;i<=nl;i++) irefine *= 2;   /* C pow fn only takes doubles !! */
 #ifdef MPI_PARALLEL
-/* get (l,m,n) coordinates of Grid being updated on this processor */
+/* get (l,m,n) fcoordinates of Grid being updated on this processor */
     get_myGridIndex(pD, myID_Comm_world, &myL, &myM, &myN);
 #endif /* MPI_PARALLEL */
 

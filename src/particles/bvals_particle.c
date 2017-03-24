@@ -76,7 +76,7 @@ static VGFun_t apply_ix1 = NULL, apply_ox1 = NULL;
 static VGFun_t apply_ix2 = NULL, apply_ox2 = NULL;
 static VGFun_t apply_ix3 = NULL, apply_ox3 = NULL;
 
-/*==============================================================================
+/*============================================================================== 
  * PRIVATE FUNCTION PROTOTYPES:
  *   realloc_???()            - reallocate send/recv buffer
  *   update_particle_status() - reset particle status (either ghost or grid)
@@ -1041,6 +1041,7 @@ void bvals_particle_init(MeshS *pM)
 /* initialize buffers */
   NBUF = (long)(0.15*pG->arrsize);
 
+
   send_bufsize = NBUF;
   recv_bufsize = NBUF;
   send_buf = (double*)calloc_1d_array(NVAR_P*send_bufsize, sizeof(double));
@@ -1112,7 +1113,7 @@ void bvals_particle_init(MeshS *pM)
 
     }
 
-    if(apply_ox1 == NULL){
+    If(apply_ox1 == NULL){
 
       switch(pM->BCFlag_ox1){
 
