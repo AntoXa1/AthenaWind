@@ -29,8 +29,12 @@ CUSTLIBS = -ldl -lm
 
 ifeq (@FFT_MODE@,FFT_ENABLED)
   BLOCKINC = -I fftsrc
-  FFTWLIB = -L/usr/lib -lfftw3
-  FFTWINC = -I/usr/include
+  # FFTWLIB = -L/usr/lib -lfftw3
+  # FFTWINC = -I/usr/include
+
+  FFTWLIB = -L/Users/dora/Applications/LIBS/lib -lfftw3
+  FFTWINC = -I/Users/dora/Applications/LIBS/include
+  
 endif
 
 ifeq (@MPI_MODE@,MPI_PARALLEL)
@@ -106,9 +110,14 @@ ifeq ($(MACHINE),macosx)
   CC = gcc
   LDR = gcc
   OPT = -O0 -g -w
+  
 #  OPT = -O3
-  FFTWLIB = -L/opt/local/lib -lfftw3
-  FFTWINC = -I/opt/local/include
+# FFTWLIB = -L/opt/local/lib -lfftw3
+# FFTWINC = -I/opt/local/include
+
+  FFTWLIB = -L/Users/dora/Applications/LIBS/lib -lfftw3
+  FFTWINC = -I/Users/dora/Applications/LIBS/include
+
 else
   abort Unsupported MACHINE=$(MACHINE)
 endif
