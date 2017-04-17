@@ -20,14 +20,14 @@
  *  (user modified via configure) */
 
 /* Version identifier when configure was last run */
-#define CONFIGURE_DATE "Fri Mar 10 13:05:54 EST 2017"
+#define CONFIGURE_DATE "Mon Apr  3 16:23:14 EDT 2017"
 
 /* Problem generator with which Athena is compiled */
-#define A_PROBLEM "torus9"
+#define A_PROBLEM "strat"
 
 /* radiation or not :: Anton */
 
-#define XRAYS
+/* #define XRAYS */
 
 /* HYDRO or MHD */
 #define MHD
@@ -43,14 +43,14 @@
 #endif
 
 /* Coordinate system: CARTESIAN or CYLINDRICAL */
-#define CYLINDRICAL
+#define CARTESIAN
 
 /* Number of passively advected scalars */
 #define NSCALARS 0
 
 /* Self-gravity */
-#define NO_SELF_GRAVITY
-#define SELF_GRAVITY_NONE
+#define SELF_GRAVITY
+#define SELF_GRAVITY_USING_FFT
 
 /* Particles */
 #define NO_PARTICLES
@@ -94,10 +94,10 @@
 #define NO_H_CORRECTION
 
 /* FFT mode: FFT_ENABLED or NO_FFT */
-#define NO_FFT
+#define FFT_ENABLED
 
 /* shearing-box: SHEARING_BOX or NO_SHEARING_BOX */
-#define NO_SHEARING_BOX
+#define SHEARING_BOX
 
 /* fargo: FARGO or NO_FARGO */
 #define NO_FARGO
@@ -113,7 +113,7 @@
 
 /* First order flux correction in VL integrator:
  * FIRST_ORDER_FLUX_CORRECTION or NO_FIRST_ORDER_FLUX_CORRECTION */
-#define FIRST_ORDER_FLUX_CORRECTION
+#define NO_FIRST_ORDER_FLUX_CORRECTION
 
 /*----------------------------------------------------------------------------*/
 /* macros associated with numerical algorithm (rarely modified) */
