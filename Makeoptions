@@ -27,7 +27,7 @@ BLOCKINC =
 BLOCKLIB = 
 CUSTLIBS = -ldl -lm
 
-ifeq (NO_FFT,FFT_ENABLED)
+ifeq (FFT_ENABLED,FFT_ENABLED)
   BLOCKINC = -I fftsrc
   FFTWLIB = -L/usr/lib -lfftw3
   FFTWINC = -I/usr/include
@@ -125,7 +125,7 @@ ifeq (NO_MPI_PARALLEL,NO_MPI_PARALLEL)
   MPIINC = 
   MPILIB = 
 endif
-ifeq (NO_FFT,NO_FFT)
+ifeq (FFT_ENABLED,NO_FFT)
   FFTWINC = 
   FFTWLIB = 
 endif
