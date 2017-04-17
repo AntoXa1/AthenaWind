@@ -1537,7 +1537,9 @@ void resistivity_init(MeshS *pM)
     get_myeta = eta_standard; 
   else
     /* general prescription with user defined diffusivities */
-    get_myeta = get_eta_user;
+    printf("not implemented.. in resistivity press any key ss... ");
+    getchar();
+    /* get_myeta = get_eta_user; */
 
 /* Cycle over all Grids on this processor to find maximum Nx1, Nx2, Nx3 */
   for (nl=0; nl<(pM->NLevels); nl++){
