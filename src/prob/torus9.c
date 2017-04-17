@@ -663,6 +663,16 @@ void problem(DomainS *pDomain)
   dcut = par_getd("problem","dcut");
   beta = par_getd("problem","beta");
 #endif
+  
+#ifdef RESISTIVITY
+
+  eta_Ohm = 0.0;
+  Q_AD    = 0.0;
+  Q_Hall  = par_getd("problem","Q_H");
+  //d_ind   = 1.0;
+
+
+#endif
 
 
 //printf("%f \n", F2Fedd); getchar();
