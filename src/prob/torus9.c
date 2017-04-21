@@ -209,7 +209,7 @@ void optDepthFunctions(GridS *pG){
     my_id=0;
   
   float sgnf=1.;
-
+  
   is = pG->is;
   ie = pG->ie;
   js = pG->js;
@@ -263,7 +263,7 @@ void optDepthFunctions(GridS *pG){
 	colDens =0.;
 	x_is = pG->MinX[0] + 0.5*pG->dx1;
 	
-        sfnorm[0] =  copysign(1., norm[0] )*fmax(fabs(norm[0]),tiny);
+  sfnorm[0] =  copysign(1., norm[0] )*fmax(fabs(norm[0]),tiny);
 	z_is = norm[1]/sfnorm[0]*(x_is - rRadSrc[0]) + rRadSrc[1];
       
 	/* z_is = norm[1]/ fmax(norm[0],tiny)*(x_is - rRadSrc[0]) + rRadSrc[1]; */
@@ -283,7 +283,7 @@ void optDepthFunctions(GridS *pG){
 
 	i = is;
 	while (i < ie)	{
-	  sfnorm[0] =  copysign(1., norm[0] )*fmax(fabs(norm[0]),tiny);
+	  sfnorm[0] =  copysign(1., norm[0] )*fmax(fabs(norm[0]),tiny);    
 	  sfnorm[1] =  copysign(1., norm[1] )*fmax(fabs(norm[1]),tiny);	 	  
 	    
 	  // crossing face, xf,i+1

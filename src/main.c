@@ -853,6 +853,7 @@ void change_rundir(const char *name)
 
 #endif /* MPI_PARALLEL */
 
+
   return;
 }
 
