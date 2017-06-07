@@ -20,13 +20,12 @@
  *  (user modified via configure) */
 
 /* Version identifier when configure was last run */
-#define CONFIGURE_DATE "Fri Mar 10 13:05:54 EST 2017"
+#define CONFIGURE_DATE "Tue Jun  6 15:19:57 EDT 2017"
 
 /* Problem generator with which Athena is compiled */
 #define A_PROBLEM "torus9"
 
 /* radiation or not :: Anton */
-
 #define XRAYS
 
 /* HYDRO or MHD */

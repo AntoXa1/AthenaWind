@@ -65,6 +65,7 @@ if caseToDo == 'torus_hd':
     
 
 if caseToDo == 'torus_mhd':    
+
     problemToConfig = '--with-problem=torus9'
 
     methodGasOrMHD =  '--with-gas=mhd'
@@ -94,7 +95,8 @@ compLev = '0123'
 
 
 if '0' in compLev:
-    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',Integrator, '--enable-fofc', methodGasOrMHD, METHOD, ORDER, problemToConfig])
+    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical',Integrator, '--enable-fofc', methodGasOrMHD,\
+                        METHOD, ORDER, problemToConfig])
 
 #    subproc.check_call([PATH+'./configure', '--with-coord=cylindrical', methodGasOrMHD, METHOD, ORDER, problemToConfig])
     

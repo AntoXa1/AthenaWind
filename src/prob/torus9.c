@@ -53,6 +53,8 @@ static void printProblemParameters();
 #ifdef XRAYS
 //void optDepthFunctions(MeshS *pM);
 
+//void optDepthStack(GridS *pG);
+
 void optDepthFunctions(GridS *pG);
 
 
@@ -194,6 +196,43 @@ void apause(){
 #ifdef XRAYS
 
 
+void optDepthStack(GridS *pG){
+  // it is assumed that the source is located on the axis of symmetry
+   Real r, t, z, l,dl, ri, tj, zk,
+    tau=0,dtau=0,tau_ghost,xi=0,x1,x2,x3;      
+   
+    int i,j,k,is,ie,js,je,ks,ke, il, iu, jl,ju,kl,ku,ip,jp,kp,knew,
+    my_id=0;
+
+    Real abs_cart_norm, cart_norm[3], cyl_norm[3], xyz_pos[3], rtz_pos[3], xyz_p[3],
+      res[1];
+    int ijk_cur[3],iter,iter_max, lr, ir=0, i0,j0,k0;
+    short nroot;
+
+    Real xyz_in[3], radSrcCyl[3], dist, sint, cost, tmp;
+
+       
+  printf("hello from test ray-tracing \n");
+  
+  is = pG->is;
+  ie = pG->ie;
+  js = pG->js;
+  je = pG->je;
+  ks = pG->ks;
+  ke = pG->ke;
+  il = is - nghost*(ie > is);
+  jl = js - nghost*(je > js);
+  kl = ks - nghost*(ke > ks);
+  iu = ie + nghost*(ie > is);
+  ju = je + nghost*(je > js);
+  ku = ke + nghost*(ke > ks);
+
+  
+}
+
+
+
+
 void optDepthFunctions(GridS *pG){
   // it is assumed that the source is located on the axis of symmetry
 
@@ -233,7 +272,7 @@ void optDepthFunctions(GridS *pG){
   //infinite loop for parallel debugging
   int  mpi1=1;
   // while( mpi1==1 );
- #endif 
+#endif 
   
     
   for (kp=ks; kp<=ke; kp++) {   // z
@@ -830,7 +869,7 @@ void problem(DomainS *pDomain)
 	//    	    printf("%d\n", ju);
 	//    	  	printf("%f \n", rho0); apause();
 
-	cc_pos(pG,i,j,k,&x1,&x2,&x3);
+    	  	cc_pos(pG,i,j,k,&x1,&x2,&x3);
         rad = sqrt(SQR(x1) + SQR(x3));
 
         x1i = x1 - 0.5*pG->dx1;
@@ -953,10 +992,10 @@ void problem(DomainS *pDomain)
         x3i = x3 - 0.5*pG->dx3;
 
         // Br = -dAp/dz
-        pG->B1i[k][j][i] = -(Ap[k+1][j][i] - Ap[k][j][i])/pG->dx3;
+        pG->B1i[k][j][i] = -(Ap[k+1][j][i]-Ap[k][j][i])/pG->dx3;
 
         // Bz = (1/R)*d(R*Ap)/dr
-        pG->B3i[k][j][i] = (Ap[k][j][i+1]*(x1i+pG->dx1) - Ap[k][j][i]*x1i)/(x1*pG->dx1);
+        pG->B3i[k][j][i] = (Ap[k][j][i+1]*(x1i+pG->dx1)-Ap[k][j][i]*x1i)/(x1*pG->dx1);
 
         //Bt = d(Ap)/dz - d(Ap)/dr
 	//        pG->B1i[k][j][i] = 0.;
@@ -1142,7 +1181,7 @@ void problem(DomainS *pDomain)
 #endif
 
 
-    
+
 
 
   //  for (k=kl; k<=ku; k++) {
@@ -1284,7 +1323,11 @@ void Userwork_in_loop (MeshS *pM)
 /* bvals_tau(&pD); */
  
  testRayTracings(pG);
-  
+
+
+ optDepth(pG);
+
+
 /* optDepthFunctions(pG); */
  
 /* //for(k=4;k<=10;k++) printf("%f \n", pG->tau_e[k][10][10]) ; */
@@ -1998,12 +2041,13 @@ void bvals_tau(DomainS *pD)
 /*--- Step 1. ------------------------------------------------------------------
  * Boundary Conditions in x1-direction */
 
+#ifdef MPI_PARALLEL
 int  mpi1=1;
  while( mpi1==0 );
   
   if (pGrid->Nx[0] > 1){
 
-#ifdef MPI_PARALLEL
+
 
     cnt = nghost*(pGrid->Nx[1])*(pGrid->Nx[2]);
 
@@ -2096,10 +2140,10 @@ int  mpi1=1;
 
   }
 
-/*--- Step 2. ------------------------------------------------------------------
- * Boundary Conditions in x2-direction */
 
-  if (pGrid->Nx[1] > 1){
+/*--- Step 2. -----Boundary Conditions in x2-direction */
+
+  if( pGrid->Nx[1] > 1 ) {
 
 #ifdef MPI_PARALLEL
 
@@ -2207,7 +2251,7 @@ int  mpi1=1;
 /*--- Step 3. ------------------------------------------------------------------
  * Boundary Conditions in x3-direction */
 
-  if (pGrid->Nx[2] > 1){
+  if ( pGrid->Nx[2] > 1){
 
 #ifdef MPI_PARALLEL
 
@@ -2744,7 +2788,7 @@ static void boundCondOptDepthLike_ox3(GridS *pGrid)
 
 
 void testRayTracings(GridS *pG){
-  Real r, t, z, l,dl, ri, tj, zk,
+    Real r, t, z, l,dl, ri, tj, zk,
     tau=0,dtau=0,tau_ghost,xi=0,x1,x2,x3;      
    
     int i,j,k,is,ie,js,je,ks,ke, il, iu, jl,ju,kl,ku,ip,jp,kp,knew,
@@ -2758,7 +2802,7 @@ void testRayTracings(GridS *pG){
     Real xyz_in[3], radSrcCyl[3], dist, sint, cost, tmp;
 
        
-  printf("hello from test raytracing \n");
+  printf("hello from test ray-tracing \n");
   
   is = pG->is;
   ie = pG->ie;
@@ -2777,8 +2821,11 @@ void testRayTracings(GridS *pG){
   radSrcCyl[0]=1.;
   radSrcCyl[1]=-1;
   radSrcCyl[2]=4.;
+  /* end point */
+  x1 = 6.;
+  x2 = 1.;
+  x3 = -4.;
   
-
   lr=celli(pG,radSrcCyl[0], 1./pG->dx1, &i0, &ir);
   lr=cellj(pG,radSrcCyl[1], 1./pG->dx2, &j0, &ir);
   lr=cellk(pG,radSrcCyl[2], 1./pG->dx3, &k0, &ir);
@@ -2786,18 +2833,18 @@ void testRayTracings(GridS *pG){
   ijk_cur[0] = i0;
   ijk_cur[1] = j0;
   ijk_cur[2] = k0;
+
+  //  corrected location of the source on the grid
   cc_pos(pG,i0,j0,k0,&rtz_pos[0],&rtz_pos[1],&rtz_pos[2]);
+
   for(i=0;i<=2;i++) radSrcCyl[i]=rtz_pos[i];
+
   coordCylToCart(xyz_in, radSrcCyl, cos(radSrcCyl[1]), sin(radSrcCyl[1]) );
-  
-  /* end point */
-  x1 = 6.;
-  x2 = 1.;
-  x3 = -4.;
+
+  //  corrected location of the end point on the grid
   lr=celli(pG, x1, 1./pG->dx1, &ip, &ir);
   lr=cellj(pG, x2, 1./pG->dx2, &jp, &ir);
   lr=cellk(pG, x3, 1./pG->dx3, &kp, &ir);    
-
   
   cc_pos(pG,ip,jp,kp,&rtz_pos[0],&rtz_pos[1],&rtz_pos[2]);
   sint = sin(rtz_pos[1]);
@@ -2845,7 +2892,7 @@ void testRayTracings(GridS *pG){
     cyl_norm[0] = cart_norm[0]*cos(tj) + cart_norm[1]*sin(tj);
     cyl_norm[1] = -cart_norm[0]*sin(tj) + cart_norm[1]*cos(tj);
 
-    /* get a non-normilized direction in cyl coordinates */    
+    /* get a non-normalized direction in cyl coordinates */
     //cartVectorToCylVector(cyl_norm, cart_norm, cos(rtz_pos[1]),sin(rtz_pos[1]));
     //printf("\n %f %f \n", cyl_norm[1], res[1]);
     
@@ -2855,15 +2902,14 @@ void testRayTracings(GridS *pG){
     dl = res[0];
     l += dl;
     
-    printf("ip,jp,kp, ijk,l,dl: %d %d %d %d %d %d  %f %f \n",
-	   ip,jp,kp, ijk_cur[0], ijk_cur[1], ijk_cur[2],l, dl);
+//    printf("ip,jp,kp, ijk,l,dl: %d %d %d %d %d %d  %f %f \n",
+//	   ip,jp,kp, ijk_cur[0], ijk_cur[1], ijk_cur[2],l, dl);
+//
+//    printf("xyz_dest= %f %f %f xyz_pos= %f %f %f \n", xyz_p[0],xyz_p[1],xyz_p[2],
+//	   xyz_pos[0],xyz_pos[1],xyz_pos[2]);
 
-    printf("xyz_dest= %f %f %f xyz_pos= %f %f %f \n", xyz_p[0],xyz_p[1],xyz_p[2],
-	   xyz_pos[0],xyz_pos[1],xyz_pos[2]);
-    
-    /* s = sqrt(pow(A[0]-B[0], 2)+pow(A[1]-B[1], 2)+pow(A[2]-B[2], 2)); */
  
-    if( ijk_cur[0]==ip &&  ijk_cur[1]==jp &&  ijk_cur[2]==kp ){  /* || s > s_prev){ */
+    if( ijk_cur[0]==ip &&  ijk_cur[1]==jp &&  ijk_cur[2]==kp ){
 
       cc_pos(pG,ijk_cur[0], ijk_cur[1], ijk_cur[2], &x1,&x2,&x3);
       printf("compare: %f %f \n", l, dist);
@@ -2872,6 +2918,7 @@ void testRayTracings(GridS *pG){
     /* s_prev = s; */    
     printf("iteration: %d \n", iter);       
    
+
   }
   
   printf(" test raytracing done ");
