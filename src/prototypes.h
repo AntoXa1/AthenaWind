@@ -71,6 +71,13 @@ void bvals_mhd_init(MeshS *pM);
 void bvals_mhd_fun(DomainS *pD, enum BCDirection dir, VGFun_t prob_bc);
 void bvals_mhd(DomainS *pDomain);
 
+#ifdef XRAYS
+
+void bvals_tau_init(MeshS *pM);
+void bvals_tau(DomainS *pD);
+
+#endif
+
 /*----------------------------------------------------------------------------*/
 /* bvals_shear.c  */
 #ifdef SHEARING_BOX
@@ -207,7 +214,7 @@ void par_dist_mpi(const int mytid, MPI_Comm comm);
 
 /*----------------------------------------------------------------------------*/
 /* prob/PROBLEM.c ; linked to problem.c */
-void problem(DomainS *pD);
+void problem(MeshS *pM, DomainS *pD);
 void Userwork_in_loop(MeshS *pM);
 void Userwork_after_loop(MeshS *pM);
 void problem_read_restart(MeshS *pM, FILE *fp);

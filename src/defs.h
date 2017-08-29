@@ -20,7 +20,7 @@
  *  (user modified via configure) */
 
 /* Version identifier when configure was last run */
-#define CONFIGURE_DATE "Tue Jun  6 15:19:57 EDT 2017"
+#define CONFIGURE_DATE "Mon Aug 28 10:28:31 MSK 2017"
 
 /* Problem generator with which Athena is compiled */
 #define A_PROBLEM "torus9"
@@ -87,7 +87,7 @@
 #define NO_WRITE_GHOST_CELLS
 
 /* MPI parallelism: MPI_PARALLEL or NO_MPI_PARALLEL */
-#define NO_MPI_PARALLEL
+#define MPI_PARALLEL
 
 /* H-correction: H_CORRECTION or NO_H_CORRECTION */
 #define NO_H_CORRECTION
@@ -112,7 +112,7 @@
 
 /* First order flux correction in VL integrator:
  * FIRST_ORDER_FLUX_CORRECTION or NO_FIRST_ORDER_FLUX_CORRECTION */
-#define FIRST_ORDER_FLUX_CORRECTION
+#define NO_FIRST_ORDER_FLUX_CORRECTION
 
 /*----------------------------------------------------------------------------*/
 /* macros associated with numerical algorithm (rarely modified) */

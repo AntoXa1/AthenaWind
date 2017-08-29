@@ -58,6 +58,7 @@ void init_grid(MeshS *pM)
   int n1r,n2r,n1p,n2p;
 #endif
 
+  
 /* number of dimensions in Grid. */
   nDim=1;
   for (i=1; i<3; i++) if (pM->Nx[i]>1) nDim++;
@@ -201,13 +202,39 @@ void init_grid(MeshS *pM)
 #endif /* RESISTIVITY */
 
 /* Build 3D arrays related to Xray processing */
+//      	  	      anton
 #ifdef XRAYS
+      //ionization parameter
       pG->xi = (Real***)calloc_3d_array(n3z, n2z, n1z, sizeof(Real));
       if (pG->xi == NULL) goto on_error_xrays_xi;
+
+      //    optical depth array
       pG->tau_e = (Real***)calloc_3d_array(n3z, n2z, n1z, sizeof(Real));
       if (pG->tau_e == NULL) goto on_error_xrays_tau_e;
-      pG->Tm = (Real***)calloc_3d_array(n3z, n2z, n1z, sizeof(Real));
-      if (pG->Tm == NULL) goto on_error_xrays_Tm;
+
+      pG->disp = (Real***)calloc_3d_array(n3z, n2z, n1z, sizeof(Real));
+      if (pG->disp == NULL) goto on_error_xrays_disp;
+
+      pG->GridOfRays = (RayData***)calloc_3d_array(n3z, n2z, n1z, sizeof(RayData));
+      if (pG->GridOfRays == NULL) goto on_error_xrays_GridOfRays;
+
+      pG->yglob = (ArrayGlob***)calloc_3d_array(pM->Nx[2], pM->Nx[1], pM->Nx[0], sizeof(ArrayGlob));
+      if (pG->yglob == NULL) goto on_error_xrays_yglob;
+
+//      (pG->GridOfRays->Ray)[0][0][0] = (Real*)calloc_1d_array(n3z, sizeof(Real));
+
+
+//      (pG->GridOfRays[0][0][0]).Ray[0].dl = 1;
+
+
+//      if ((pG->GridOfRays[0][0][0]).Ray == NULL) goto on_error_xrays_Ray;
+
+
+
+
+
+
+
 #endif /* XRAYS */
 
 /* Build 3D arrays to gravitational potential and mass fluxes */
@@ -1144,12 +1171,21 @@ G3.ijkl[2],G3.ijkr[2]);
     ath_error("[init_grid]: Error allocating memory\n");
 
 #ifdef XRAYS
+
     on_error_xrays_xi:
 		free_3d_array(pG->xi);
     on_error_xrays_tau_e:
 		free_3d_array(pG->tau_e);
-	on_error_xrays_Tm:
-		free_3d_array(pG->Tm);
+
+    on_error_xrays_GridOfRays:
+		free_3d_array(pG->GridOfRays);
+
+    on_error_xrays_disp:
+		free_3d_array(pG->disp);
+    on_error_xrays_yglob:		
+	      free_3d_array(pG->yglob);
+
+
 #endif
 }
 

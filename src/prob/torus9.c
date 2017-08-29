@@ -20,10 +20,14 @@
 
 //****************************************
 
+#ifdef MPI_PARALLEL
+
+//#define DBG_MPI_OPT_STACK //mpi "breakpoint" while loops
+
+#endif
+
 #define HAWL
 #define RADIAL_RAY_TEST
-
-
 
 //#define SOLOV
 //#if !defined(HAWL)
@@ -33,11 +37,6 @@
 
 //****************************************
 /* make all MACHINE=macosxmpi */
-
-
-
-
-
 
 
 static void inX1BoundCond(GridS *pGrid);
@@ -53,8 +52,8 @@ static void printProblemParameters();
 #ifdef XRAYS
 //void optDepthFunctions(MeshS *pM);
 
-//void optDepthStack(GridS *pG);
-
+void Constr_optDepthStack(MeshS *pM, GridS *pG);
+void optDepthStack(MeshS *pM, GridS *pG);
 void optDepthFunctions(GridS *pG);
 
 
@@ -70,7 +69,6 @@ static Real rRadSrc[2]={0.,0.}; //coordinates of the radiation source
 static Real Ctor, Kbar, nAd, q1, xm, rgToR0,Tx,Rg,MBH_in_gram,Tgmin,
   Dsc,Nsc,Rsc,Usc,Psc, Esc,Time0,Tvir0,Lamd0,Evir0, Ledd_e, inRadOfMesh,
   Lx, Luv, a1;
-
 
 
 static double
@@ -91,8 +89,7 @@ static double
   YR = 365.*24.*3600.,
   M_MW = 1., //mean mol. weight
   tiny = 1.E-10;
-//	PI = 3.14159265359;
-
+//PI = 3.14159265359;
 //----------------------------
 
 
@@ -104,7 +101,7 @@ static Real
 
   a1_Sol = 1,
   a2_Sol = 1,
-  b1_Sol = 3.,
+  b1_Sol = 3,
 
   w0_Sol = 2.,
   w1_Sol = 0.;
@@ -112,64 +109,36 @@ static Real
 /* ============================================================================= */
 /*                       ray tracing functions                                      */
 /* ============================================================================= */
-void testRayTracings(GridS *pG);
+void testRayTracings( MeshS *pM, GridS *pG);
 void traceGridCell(GridS *pG, Real *res, int ijk_cur[3], Real xpos[3], Real* x1x2x3, const Real
 		   cartnorm[3], const Real cylnorm[3], short*);
 void coordCylToCart(Real*, const Real*,const Real, const Real );
 void cartVectorToCylVector(Real*, const Real*, const Real, const Real);
-
 void vectBToA(Real*, const Real*, const Real*);
-
 void normVectBToA(Real* v, const Real* , const Real*, Real* );
-
 Real absValueVector(const Real*);
-  
-/* ============================================================================= */
-/*                      boundary conditions                                      */
-/* ============================================================================= */
+
+void cc_posGlob(const MeshS *pM, const GridS *pG, const int iloc, const int jloc,const int kloc,
+		Real *px1, Real *px2, Real *px3);
+void ijkLocToGlob(const GridS *pG, const int iloc, const int jloc,const int kloc,
+		  int *iglob, int *jglob, int *kglob);
+
+void initGlobComBuffer( const GridS *pG );
+void SyncGridsGlob(MeshS *pM, DomainS *pDomain, GridS *pG);
+static void packGridForGlob(GridS *pG);
+static void unPackGridForGlob(GridS *pG);
+static void pack2dIntArrayForGlob(int **Send2dBuf, int *ie, int* je);
+void freeGlobArrays();
 
 #ifdef MPI_PARALLEL
 /* MPI send and receive buffers */
+int  BufSize, ibufe, jbufe, kbufe, **BufBndr, SizeGlob; //sizes of global buffer 
 static double **send_buf = NULL, **recv_buf = NULL;
 static MPI_Request *recv_rq, *send_rq;
 #endif /* MPI_PARALLEL */
-
-//  \brief Generic void function of Grid. 
-/* boundary condition function pointers. local to this function  */
-static VGFun_t apply_ix1 = NULL, apply_ox1 = NULL;  
-static VGFun_t apply_ix2 = NULL, apply_ox2 = NULL;
-static VGFun_t apply_ix3 = NULL, apply_ox3 = NULL;
-
-void bvals_tau_init(MeshS *pM);
-void bvals_tau(DomainS *pD);
-
-#ifdef MPI_PARALLEL
-static void pack_tau_ix1(GridS *pG);
-static void pack_tau_ox1(GridS *pG);
-static void pack_tau_ix2(GridS *pG);
-static void pack_tau_ox2(GridS *pG);
-static void pack_tau_ix3(GridS *pG);
-static void pack_tau_ox3(GridS *pG);
-
-static void unpack_tau_ix1(GridS *pG);
-static void unpack_tau_ox1(GridS *pG);
-static void unpack_tau_ix2(GridS *pG);
-static void unpack_tau_ox2(GridS *pG);
-static void unpack_tau_ix3(GridS *pG);
-static void unpack_tau_ox3(GridS *pG);
-#endif /* MPI_PARALLEL */
-
-static void boundCondOptDepthLike_ix1(GridS *pG);
-static void boundCondOptDepthLike_ox1(GridS *pG);
-static void boundCondOptDepthLike_ix2(GridS *pG);
-static void boundCondOptDepthLike_ox2(GridS *pG);
-static void boundCondOptDepthLike_ix3(GridS *pG);
-static void boundCondOptDepthLike_ox3(GridS *pG);
- 
-
-
-
-
+/* ============================================================================= */
+/*                      boundary conditions                                      */
+/* ============================================================================= */
 
 
 //extern x1GravAcc;
@@ -195,25 +164,10 @@ void apause(){
 
 #ifdef XRAYS
 
-
-void optDepthStack(GridS *pG){
-  // it is assumed that the source is located on the axis of symmetry
-   Real r, t, z, l,dl, ri, tj, zk,
-    tau=0,dtau=0,tau_ghost,xi=0,x1,x2,x3;      
-   
-    int i,j,k,is,ie,js,je,ks,ke, il, iu, jl,ju,kl,ku,ip,jp,kp,knew,
-    my_id=0;
-
-    Real abs_cart_norm, cart_norm[3], cyl_norm[3], xyz_pos[3], rtz_pos[3], xyz_p[3],
-      res[1];
-    int ijk_cur[3],iter,iter_max, lr, ir=0, i0,j0,k0;
-    short nroot;
-
-    Real xyz_in[3], radSrcCyl[3], dist, sint, cost, tmp;
-
-       
-  printf("hello from test ray-tracing \n");
-  
+void optDepthStack( MeshS *pM, GridS *pG){
+ int i,j,k,is,ie,js,je,ks,ke, il, iu, jl,ju,kl,ku,ip,jp,kp,
+ 	 ii;
+ Real den,dtau,dl,tau;
   is = pG->is;
   ie = pG->ie;
   js = pG->js;
@@ -227,8 +181,314 @@ void optDepthStack(GridS *pG){
   ju = je + nghost*(je > js);
   ku = ke + nghost*(ke > ks);
 
-  
+  for (kp = ks; kp<=ke; kp++) { //z
+    for (jp = js; jp<=je; jp++) { //t
+      for (ip = is; ip<=ie; ip++) { //r
+
+    	tau=0;
+
+	if (ip==is){
+	  tau = pG->tau_e[kp][jp][ip-1];
+	}
+	
+  		for (ii = 0; ii<(pG->GridOfRays[kp][jp][ip]).len; ii++){
+
+			i=(pG->GridOfRays[kp][jp][ip]).Ray[ii].i;
+			j=(pG->GridOfRays[kp][jp][ip]).Ray[ii].j;
+			k=(pG->GridOfRays[kp][jp][ip]).Ray[ii].k;
+
+			den = (pG->U[k][j][i]).d;
+
+			dl = (pG->GridOfRays[kp][jp][ip].Ray[ii]).dl;
+			//dtau = dl;
+			dtau = Rsc*Dsc*KPE* dl*den;
+	dtau = dl*den;
+  			tau+=dtau;
+			
+			//	tau+=dl;
+			//	tau = dl;
+  		}
+  		pG->tau_e[kp][jp][ip] = tau;
+
+      } //ip
+    } //jp
+  } //kp
+
 }
+
+void Constr_optDepthStack(MeshS *pM, GridS *pG){
+  // it is assumed that the source is located on the axis of symmetry
+
+//   Real r, t, z,
+//    tau_ghost,xi=0,;
+
+   Real x1is, x2js, x3ks, den,  ri, tj, zk,x1,x2,x3,
+   	   	   l,dl,tau=0,dtau=0 ;
+   
+    int i,j,k,is,ie,js,je,ks,ke, il, iu, jl,ju,kl,ku,ip,jp,kp,
+	knew,my_id=0,ii;
+
+    Real abs_cart_norm, cart_norm[3], cyl_norm[3], xyz_src[3], xyz_pos[3], rtz_pos[3],rtz_in[3], xyz_p[3],
+      res[1], olpos[3],xyz_cc[3], rtz_cc[3];
+    int ijk_cur[3],iter,iter_max,lr,ir=0,i0,j0,k0,
+    		NmaxArray=1;
+    short nroot;
+
+    Real xyz_in[3], radSrcCyl[3], dist, sint, cost, s2;
+    
+//    CellOnRayData arrayDataTmp; //indices, ijk and dl
+//    int tmpIntArray1, *tmpIntArray2, *tmpIntArray3;
+
+    CellOnRayData *tmpCellIndexAndDisArray;
+	Real *tmpRealArray;
+
+    short ncros;
+
+
+//infinite loop for parallel debugging
+
+int  mpi1=1;
+// while( mpi1==1 );
+
+#endif
+
+  is = pG->is;
+  ie = pG->ie;
+  js = pG->js;
+  je = pG->je;
+  ks = pG->ks;
+  ke = pG->ke;
+  il = is - nghost*(ie > is);
+  jl = js - nghost*(je > js);
+  kl = ks - nghost*(ke > ks);
+  iu = ie + nghost*(ie > is);
+  ju = je + nghost*(je > js);
+  ku = ke + nghost*(ke > ks);
+
+  iter_max= sqrt(pow(ie,2) + pow(je,2) +pow(ke,2));
+
+//  allocating temporary array for 1D ray from point source
+//  CellIndexAndCoords
+
+  if ((tmpCellIndexAndDisArray=(CellOnRayData*)calloc(iter_max , sizeof(CellIndexAndCoords)))== NULL) {
+      ath_error("[calloc_1d] failed to allocate memory CellIndexAndCoords\n");
+    }
+
+  cc_pos(pG,is,js,ks,&x1is,&x2js,&x3ks);
+  
+  
+  for (kp = ks; kp<=ke; kp++) { //z
+    for (jp = js; jp<=je; jp++) { //t
+      for (ip = is; ip<=ie; ip++) { //r
+
+	#ifdef DBG_MPI_OPT_STACK
+	  MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
+	  int  mpi1=1;
+	  if (my_id == 1) while( mpi1==1 );
+	  
+	#endif
+	  
+	   /* from ip, jp, kp get rtz position */
+	   cc_pos(pG,ip,jp,kp,&rtz_pos[0],&rtz_pos[1],&rtz_pos[2]);
+
+	   /* cc_posGlob(pM, pG, ip,jp,kp, &tmp[0],&tmp[1],&tmp[2]); */
+	   /* printf("%f %f %f %f %f %f \n", rtz_pos[0], rtz_pos[1],rtz_pos[2], tmp[0],tmp[1],tmp[2]); *\/ */
+	   /* getchar(); */
+	   
+           radSrcCyl[0] = 0.;
+ 	   radSrcCyl[1] = rtz_pos[1]; // corresponds to phi_jp
+ 	   radSrcCyl[2] =  0; // a ring at z=0
+
+// 	   for parallel calls they are not the same with radSrcCyl
+	   rtz_in[0] = x1is;
+ 	   rtz_in[1] = rtz_pos[1]; // corresponds to phi_jp
+
+	   rtz_in[2] =  rtz_pos[2] * rtz_in[0] / rtz_pos[0];
+
+	   /* Cart. position of the entry point */
+ 	    coordCylToCart(xyz_in, rtz_in, cos( rtz_in[1]), sin( rtz_in[1]));
+	   	     
+ 	   /* Cart. position of the source point */
+ 	    coordCylToCart(xyz_src, radSrcCyl, cos(radSrcCyl[1]), sin(radSrcCyl[1]));
+	    
+	    /* pG->disp[kp][jp][ip] =  sqrt(pow(rtz_in[0]-radSrcCyl[0],2)+ pow( rtz_in[2] - radSrcCyl[2],2)); */	    
+ 	   /* Cart. position of the starting point --> displacemnet*/
+
+ 	   /* indices of the starting point */
+ 	   lr=celli(pG,rtz_in[0], 1./pG->dx1, &i0, &ir);
+ 	   lr=cellj(pG,rtz_in[1], 1./pG->dx2, &j0, &ir);
+ 	   lr=cellk(pG,rtz_in[2], 1./pG->dx3, &k0, &ir);
+ 	   ijk_cur[0] = i0;
+ 	   ijk_cur[1] = j0;
+ 	   ijk_cur[2] = k0;
+
+// 	   printf("%f %d \n", x1is, i0); getchar();
+
+//	    corrected location of the source on the grid
+//		cc_pos(pG,i0,j0,k0,&rtz_pos[0],&rtz_pos[1],&rtz_pos[2]);
+
+		sint = sin(rtz_pos[1]);
+		cost = cos(rtz_pos[1]);
+		/* from rtz position get get Cart position */
+		coordCylToCart(xyz_p, rtz_pos, cost, sint);
+
+		/* get normalized  vector from start to finish */
+		for(i=0;i<=2;i++) cart_norm[i]= xyz_p[i]-xyz_src[i];
+
+		abs_cart_norm = sqrt(pow(cart_norm[0], 2)+pow(cart_norm[1], 2)+pow(cart_norm[2], 2));
+
+		dist = absValueVector(cart_norm);
+	
+		for(i=0;i<=2;i++) cart_norm[i] = cart_norm[i]/abs_cart_norm;
+		cost = cos(radSrcCyl[1]);
+		sint = sin(radSrcCyl[1]);
+		cartVectorToCylVector(cyl_norm, cart_norm, cos(radSrcCyl[1]), sin(radSrcCyl[1]));
+		/* tau = pG->tau_e[ kp ][ jp ][ 1 ]; */
+		/* pG->tau_e[kp][jp] [ is ] = tau; */
+	
+		/* starting point for ray-tracing */
+		rtz_pos[0]=rtz_in[0];
+		rtz_pos[1]=rtz_in[1];
+		rtz_pos[2]=rtz_in[2];
+		sint = sin(rtz_pos[1]);
+		cost = cos(rtz_pos[1]);
+  
+		for(i=0;i<=2;i++) xyz_pos[i]=xyz_in[i];
+		l = 0;
+		dl =0;
+		tau = 0;
+		dtau=0;
+
+		for (iter=0; iter<=iter_max; iter++){
+
+		  s2 = pow(xyz_p[0]-xyz_pos[0],2)+pow(xyz_p[1]-xyz_pos[1],2)+pow(xyz_p[2]-xyz_pos[2],2);
+		  olpos[0]=xyz_cc[0];
+		  olpos[1]=xyz_cc[1];
+		  olpos[2]=xyz_cc[2];
+		  
+		  traceGridCell(pG, res, ijk_cur, xyz_pos, rtz_pos,
+				cart_norm, cyl_norm, &ncros);
+		  /* find new cyl coordinates: */
+		  cc_pos(pG,ijk_cur[0],ijk_cur[1],ijk_cur[2],&rtz_pos[0],&rtz_pos[1],&rtz_pos[2]);
+
+		  ri = sqrt(pow(xyz_pos[0],2)+pow(xyz_pos[1],2));
+		  tj = atan2(xyz_pos[1], xyz_pos[0]);
+		  zk =xyz_pos[2];
+
+		  /* we need only sign(s) of cyl_norm */
+		  cyl_norm[0] = cart_norm[0]*cos(tj) + cart_norm[1]*sin(tj);
+		  cyl_norm[1] = -cart_norm[0]*sin(tj) + cart_norm[1]*cos(tj);
+
+		  dl = res[0];
+
+		  rtz_cc[0]=rtz_pos[0];
+		  rtz_cc[1]=rtz_pos[1];
+		  rtz_cc[2]=rtz_pos[2];
+		  
+		  coordCylToCart(xyz_cc, rtz_cc,  cos(rtz_cc[1]),  sin(rtz_cc[1]) );
+		  
+		  dl = sqrt(pow(xyz_cc[0]-olpos[0],2)+pow(xyz_cc[1]-olpos[1],2)+
+		     pow(xyz_cc[2]-olpos[2],2));
+
+		  /* dl = sqrt( pow(pG->dx1,2)  +  pow(pG->dx3,2) ); */
+
+		  (tmpCellIndexAndDisArray[iter]).dl = dl;
+		  (tmpCellIndexAndDisArray[iter]).i = ijk_cur[0];
+		  (tmpCellIndexAndDisArray[iter]).j = ijk_cur[1];
+		  (tmpCellIndexAndDisArray[iter]).k = ijk_cur[2];
+
+		  l += dl;
+
+		  den = (pG->U[ijk_cur[2]][ijk_cur[1]][ijk_cur[0]].d < 1.05* rho0) ?
+		    tiny : pG->U[ijk_cur[2]][ijk_cur[1]][ijk_cur[0]].d;
+		  dtau = dl * den;
+/* dtau = dl; */
+		  tau  += dtau;
+		  NmaxArray = iter+1; //To use in allocation
+
+//		  tau = l;
+		  if (pow(xyz_p[0]-xyz_pos[0],2)+pow(xyz_p[1]-xyz_pos[1],2)+pow(xyz_p[2]-xyz_pos[2],2)>s2){
+//			tau= 0;
+			break;
+		  }
+
+		 
+//		  printf("%f \n", sqrt(s2));
+//		  printf("%f %f %d %d %d %d\n", tau, dl, iter, kp, jp, ip);
+
+//		  if (tau > 12.) {
+//					  printf("iter, ip, jp, kp, ijk: %d %d %d %d %d %d %d %f %f %f\n",
+//							  iter,ip,jp,kp, ijk_cur[0], ijk_cur[1], ijk_cur[2], tau, dtau,res[0]);
+//					  printf("xyz_dest= %f %f %f xyz_pos= %f %f %f \n", xyz_p[0],xyz_p[1],xyz_p[2],
+//					  xyz_pos[0],xyz_pos[1],xyz_pos[2]);
+//				      printf("--------\n");
+//				      getchar();
+//		  }
+
+		  /* test if reached to the ip,jp,kp */
+		  if( ijk_cur[0]==ip &&  ijk_cur[1]==jp &&  ijk_cur[2]==kp ){
+			cc_pos(pG,ijk_cur[0], ijk_cur[1], ijk_cur[2], &x1,&x2,&x3);
+			break;
+		  }
+
+		  
+		} //iter
+
+		//		pG->GridOfRays should be already allocated at init_grid.c
+		(pG->GridOfRays[kp][jp][ip]).Ray = (CellOnRayData*)calloc_1d_array(NmaxArray, sizeof(CellOnRayData));
+		(pG->GridOfRays[kp][jp][ip]).len = NmaxArray;
+
+		pG->tau_e[kp][jp][ip] = 0;
+
+		/* for (ii = 0; ii<NmaxArray; ii++){ */
+		/* 	(pG->GridOfRays[kp][jp][ip]).Ray[ii].dl= (tmpCellIndexAndDisArray[ii]).dl; */
+		/* 	(pG->GridOfRays[kp][jp][ip]).Ray[ii].i=(tmpCellIndexAndDisArray[ii]).i; */
+		/* 	(pG->GridOfRays[kp][jp][ip]).Ray[ii].j=(tmpCellIndexAndDisArray[ii]).j; */
+		/* 	(pG->GridOfRays[kp][jp][ip]).Ray[ii].k=(tmpCellIndexAndDisArray[ii]).k; */
+			
+		/* 	pG->tau_e[kp][jp][ip] += dl; */
+		/* } */
+
+
+	
+	
+		      /* for (ii = 0; ii<(pG->GridOfRays[kp][jp][ip]).len; ii++){ */
+		      /* 	i=(pG->GridOfRays[kp][jp][ip]).Ray[ii].i; */
+		      /* 	j=(pG->GridOfRays[kp][jp][ip]).Ray[ii].j; */
+		      /* 	k=(pG->GridOfRays[kp][jp][ip]).Ray[ii].k; */
+		      /* 	dl = (pG->GridOfRays[kp][jp][ip].Ray[ii]).dl; */
+			
+ 		      /* 	dtau = dl; */
+		      /* 	tau+=dtau; */
+		      /* } */
+
+	
+
+		      
+		  
+//		pG->tau_e[kp][jp][ip] *= Rsc*Dsc*KPE;
+//		for (ii = 0; ii<(pG->GridOfRays[kp][jp][ip]).len; ii++){
+//			pG->tau_e[kp][jp][ip] += (pG->GridOfRays[kp][jp][ip].Ray[ii]).dl;
+//		}
+
+		pG->tau_e[kp][jp][ip]  =  tau; //pG->tau_e[kp][jp][ip];
+
+		tau=0;
+
+
+      } //ip
+    } //jp
+  } //kp
+
+//  for (kp = ks; kp <=ke; kp++) printf("%f \n", pG->tau_e[kp][js][is]);
+
+
+free(tmpCellIndexAndDisArray);
+
+//  printf(" optDepthStack \n");
+//  getchar();
+}
+
 
 
 
@@ -267,12 +527,12 @@ void optDepthFunctions(GridS *pG){
 #ifdef MPI_PARALLEL
   MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
 
-  printf("optdepth,  my_id = %f \n",(float)my_id);
+  /* printf("optdepth,  my_id = %f \n",(float)my_id); */
 
   //infinite loop for parallel debugging
   int  mpi1=1;
   // while( mpi1==1 );
-#endif 
+#endif
   
     
   for (kp=ks; kp<=ke; kp++) {   // z
@@ -283,7 +543,7 @@ void optDepthFunctions(GridS *pG){
       
       pG->tau_e[kp][jp] [ is ] = tau;
       
-      // tau = 0;      
+      // tau = 0;
       for (ip = is; ip<=ie; ip++) { //R
 
 	//	pG->tau_e[kp][jp][ip] =  1.; //pG->tau_e[kp][jp][1];
@@ -291,7 +551,7 @@ void optDepthFunctions(GridS *pG){
 	// Printf(" %d %d %d %d %d %d \n",il, jl, kl, iu,  ju,  ku );
 	// getchar();
 	//	tau=0.;
-	//pG->tau_e[kp][jp][ip]=0.;	
+	//pG->tau_e[kp][jp][ip]=0.;
        
 	cc_pos(pG,ip,jp,kp,&x1,&x2,&x3);
 
@@ -302,7 +562,7 @@ void optDepthFunctions(GridS *pG){
 	colDens =0.;
 	x_is = pG->MinX[0] + 0.5*pG->dx1;
 	
-  sfnorm[0] =  copysign(1., norm[0] )*fmax(fabs(norm[0]),tiny);
+	sfnorm[0] =  copysign(1., norm[0] )*fmax(fabs(norm[0]),tiny);
 	z_is = norm[1]/sfnorm[0]*(x_is - rRadSrc[0]) + rRadSrc[1];
       
 	/* z_is = norm[1]/ fmax(norm[0],tiny)*(x_is - rRadSrc[0]) + rRadSrc[1]; */
@@ -322,8 +582,8 @@ void optDepthFunctions(GridS *pG){
 
 	i = is;
 	while (i < ie)	{
-	  sfnorm[0] =  copysign(1., norm[0] )*fmax(fabs(norm[0]),tiny);    
-	  sfnorm[1] =  copysign(1., norm[1] )*fmax(fabs(norm[1]),tiny);	 	  
+	  sfnorm[0] =  copysign(1., norm[0] )*fmax(fabs(norm[0]),tiny);
+	  sfnorm[1] =  copysign(1., norm[1] )*fmax(fabs(norm[1]),tiny);
 	    
 	  // crossing face, xf,i+1
 	  rNextX[0] = pG->MinX[0] + (i+1 - pG->is)*pG->dx1;
@@ -389,8 +649,8 @@ void optDepthFunctions(GridS *pG){
 	
 	
 
-	//pG->tau_e[kp][jp][ip] =pG->tau_e[kp][jp][0]*(float)my_id; 
-	//printf("%f \n", pG->tau_e[kp][jp][ip] );	
+	//pG->tau_e[kp][jp][ip] =pG->tau_e[kp][jp][0]*(float)my_id;
+	//printf("%f \n", pG->tau_e[kp][jp][ip] );
 	//	Pg->tau_e[kp][jp][ip]=10;//(float)my_id;
 
 	
@@ -403,7 +663,7 @@ void optDepthFunctions(GridS *pG){
 
 	pG->tau_e[kp][jp][ip] =  tau/rsph;//pG->tau_e[ kp ][ jp ][ 1 ];//1.;
 
-	//	printf("%f %d %d %d \n", pG->tau_e[ kp ][ jp ][ 1 ], kp, jp, ip);  
+	//	printf("%f %d %d %d \n", pG->tau_e[ kp ][ jp ][ 1 ], kp, jp, ip);
 	
 	
 	if ((pG->U[k][jp][i].d > tiny) || (rsph > tiny)){
@@ -417,11 +677,10 @@ void optDepthFunctions(GridS *pG){
 	}
 	pG->xi[kp][jp][ip]  = xi;
 
-	pG->xi[kp][jp][ip]  *=  exp(- (pG->tau_e[kp][jp][ip]) );    
+	pG->xi[kp][jp][ip]  *=  exp(- (pG->tau_e[kp][jp][ip]) );
 
       } //ip = x
-      
-      	
+
     }	// jp = phi
   }  //kp = z
 
@@ -569,7 +828,7 @@ void xRayHeatCool(const Real dens, const Real Press, const Real xi_in,
   //	 *Hx = (Tg < Tx) ? *Hx : 0.;
   //	 printf("%e %e %e %e %e \n", Hx, Tg, xi, dens, Press);
 }
-#endif  /* XRAYS */
+//#endif  /* XRAYS */
 
 
 void plot(MeshS *pM, char name[16]){
@@ -616,12 +875,11 @@ void plot(MeshS *pM, char name[16]){
   /* getchar(); */
  
   j=js;
-  fprintf(f, "%d  %d\n", nr, nz );
-
-  for (k=ks; k<=ke; k++) {
+  /* fprintf(f, "%d  %d\n", nr, nz ); */
+  fprintf(f, "%d  %d\n", nx1, nx3 );
+  for (k=kl; k<=ku; k++) {
     /* for (j=js; j<=je; j++){	  */
-    for (i=is; i<=ie; i++){
-      
+    for (i=il; i<=iu; i++){
       if (strcmp(name, "d") == 0){
 	fprintf(f, "%f\n", pG->U[k][j][i].d );
       }
@@ -630,13 +888,14 @@ void plot(MeshS *pM, char name[16]){
       }
 #ifdef XRAYS
       if (strcmp(name, "tau") == 0){
-
 	/* printf("here -------------------- %f, %d, %d, %d \n", */
 	/*        pG->tau_e[k][j][i],  k,j,i); */
-
-	
 	fprintf(f, "%f\n", pG->tau_e[k][j][i] );
       }
+      if (strcmp(name, "disp") == 0){
+	fprintf(f, "%f\n", pG->disp[k][j][i] );
+      }
+      
       if (strcmp(name, "xi") == 0){
 	//				 fprintf(f, "%f\n", log10(pG->xi[k][j][i]) );
 	fprintf(f, "%f\n", (pG->xi[k][j][i]) );
@@ -748,8 +1007,7 @@ VOutFun_t get_usr_out_fun(const char *name)
 #define VP(R) pow(R/xm, 1.-q)
 
 
-
-void problem(DomainS *pDomain)
+void problem(MeshS *pM, DomainS *pDomain)
 {
   GridS *pG=(pDomain->Grid);
 
@@ -772,15 +1030,17 @@ void problem(DomainS *pDomain)
   //  ------------------------------
  //  Soloviev solution
 
-#ifdef SOLOVо
+#ifdef SOLOV
   Real Psi_Sol;
 #endif
 
   //  ------------------------------
 
+  printf("problem \n");
 
   int my_id;
-
+ 
+  
   is = pG->is; ie = pG->ie;
   js = pG->js; je = pG->je;
   ks = pG->ks; ke = pG->ke;
@@ -866,10 +1126,10 @@ void problem(DomainS *pDomain)
     for (j=jl; j<=ju; j++) {
       for (i=il; i<=iu; i++) {
 
-	//    	    printf("%d\n", ju);
-	//    	  	printf("%f \n", rho0); apause();
+	// printf("%d\n", ju);
+	// printf("%f \n", rho0); apause();
 
-    	  	cc_pos(pG,i,j,k,&x1,&x2,&x3);
+    	cc_pos(pG,i,j,k,&x1,&x2,&x3);
         rad = sqrt(SQR(x1) + SQR(x3));
 
         x1i = x1 - 0.5*pG->dx1;
@@ -900,7 +1160,7 @@ void problem(DomainS *pDomain)
 
         // Set up torus
 
-	//        rbnd =1./xm/( pow(xm, 2.0*q) *pow(x1, -q1)/q1 - Ctor ) + rgToR0;
+	//rbnd =1./xm/( pow(xm, 2.0*q) *pow(x1, -q1)/q1 - Ctor ) + rgToR0;
 
         rbnd =xm/( a1*pow(x1, -q1) - Ctor ) + rgToR0;
 
@@ -1158,7 +1418,6 @@ void problem(DomainS *pDomain)
   }
   /* Enroll the gravitational function and radial BC */
 
-
   StaticGravPot = grav_pot;
   x1GravAcc = grav_acc;
   
@@ -1167,14 +1426,41 @@ void problem(DomainS *pDomain)
   bvals_mhd_fun(pDomain, left_x3,  diode_outflow_ix3 );
   bvals_mhd_fun(pDomain, right_x3,  diode_outflow_ox3);
 
+  
 
-
+  
 #ifdef XRAYS
   /* optical depth is calculated for a given domain, boundary conditions are applied in */
+
   
-  //  optDepthFunctions(pG);
-  //bvals_tau(pDomain);
+
+#ifdef MPI_PARALLEL
+
+  initGlobComBuffer(pG);
   
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  
+ 
+  /* sync global patch */
+  //  SyncGridsGlob(pM, &pDomain, pG);
+  /* printf("SyncGridsGlob done.. \n "); */
+ 
+
+    
+#endif
+  
+   //printf("start Constr_optDepthStack \n");
+   //Constr_optDepthStack(pM, pG);
+   //printf("Constr_optDepthStack(pM, pG) done \n");  
+   //plot(pM, "xi");
+
+   
+//  optDepthFunctions(pG);
+
+   /* bvals_tau(pDomain); */
+
+   /* getchar(); */
   /* plot(pDomain, "tau"); */
   /* plot(pDomain, "xi"); */
 
@@ -1214,7 +1500,7 @@ void problem(DomainS *pDomain)
   //  plot(pG, "d");
 
   return;
-}
+}  //problem
 
 /*==============================================================================
  * PROBLEM USER FUNCTIONS:
@@ -1260,7 +1546,7 @@ void problem_read_restart(MeshS *pM, FILE *fp)
 
   bvals_mhd_fun(pG, left_x1,  inX1BoundCond );
   bvals_mhd_fun(pG, left_x3,  diode_outflow_ix3 );
-  bvals_mhd_fun(pG, right_x3,  diode_outflow_ox3);
+  bvals_mhd_fun(pG, right_x3, diode_outflow_ox3);
 
   return;
 }
@@ -1293,7 +1579,7 @@ void Userwork_in_loop (MeshS *pM)
   GridS *pG=pM->Domain[0][0].Grid;
 
   DomainS pD = pM->Domain[0][0];
-
+	 
   is = pG->is; ie = pG->ie;
   js = pG->js; je = pG->je;
   ks = pG->ks; ke = pG->ke;
@@ -1315,33 +1601,42 @@ void Userwork_in_loop (MeshS *pM)
   DivB = compute_div_b(pG);
 #endif
 
-
 #ifdef XRAYS
 
-
-
 /* bvals_tau(&pD); */
+
+  /* testRayTracings(pM, pG); */
+  
+//  plot(pM, "d");
+//  Constr_optDepthStack(pG);
+//  plot(pM, "tau");
+
+
+
  
- testRayTracings(pG);
+//bvals_tau(&pD);
+MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
+printf("done ,  my_id = %d \n",(int)my_id);
+ 
+optDepthStack(&pM, &pG); 
 
+//plot(pM, "tau");  
+//plot(pM, "xi");
 
- optDepth(pG);
-
-
-/* optDepthFunctions(pG); */
  
 /* //for(k=4;k<=10;k++) printf("%f \n", pG->tau_e[k][10][10]) ; */
-/* bvals_tau(&pD); */
 
+#ifdef MPI_PARALLEL 
+
+printf("optdepth after bvals,  my_id = %d \n",(int)my_id);
+ 
+if (my_id != 2)
+#endif
+ /* change!  */
+ /* bvals_tau(&pD); */
 #endif
 
-//plot(pM, "d");
 
- 
-//MPI_Comm_rank(MPI_COMM_WORLD, &my_id); 
-//if (my_id != 2)
-
-   plot(pM, "tau");
 
 //plot(pM, "xi");
   //plot(pM, "E");
@@ -1488,12 +1783,28 @@ void Userwork_in_loop (MeshS *pM)
 
 void Userwork_after_loop(MeshS *pM)
 {
+	GridS *pG;
+	DomainS *pD;
+	int i,j,k,is,ie,js,je,ks,ke,kp,jp,ip;
+	  is = pG->is;
+	  ie = pG->ie;
+	  js = pG->js;
+	  je = pG->je;
+	  ks = pG->ks;
+	  ke = pG->ke;
 
-  //	free_3d_array(pG->xi);
+	  //	free some memory
+	  for (kp = ks; kp<=ke; kp++) { //z
+	    for (jp = js; jp<=je; jp++) { //t
+	      for (ip = is; ip<=ie; ip++) { //r
+	    	 free((pG->GridOfRays[kp][jp][ip]).Ray);
+	      }
+	    }
+	  }
 
-  
-  //	free some memory
+	  //	free_3d_array(pG->xi);
 
+	  freeGlobArrays();
 }
 
 #define MAXIT 100
@@ -1897,897 +2208,7 @@ static void printProblemParameters(){
 
 
 
-/* ============================================================================== */
-/*                           Boundary conditions */
-/* ============================================================================== */
-
-
-void bvals_tau_init(MeshS *pM){
-
- GridS *pG;
- DomainS *pD;
- int l,m,n,nx1t,nx2t,nx3t,size;
- int x1cnt=0, x2cnt=0, x3cnt=0; /* Number of words passed in x1/x2/x3-dir. */
- 
-/* Figure out largest size needed for send/receive buffers with MPI ----------*/ 
-
- if (pM->NLevels > 1)
-   ath_error("[bval_rray_init]: xray module does not support SMR\n");
-#ifdef MPI_PARALLEL
-
- pD = &(pM->Domain[0][0]);  /* ptr to Domain */
- pG = pD->Grid; /* ptr to Grid */
- 
-    for (n=0; n<(pD->NGrid[2]); n++){
-      for (m=0; m<(pD->NGrid[1]); m++){
-	for (l=0; l<(pD->NGrid[0]); l++){
-/* x1cnt is surface area of x1 faces */
-	if(pD->NGrid[0] > 1){
-	  nx2t = pD->GData[n][m][l].Nx[1];
-	  if(nx2t > 1) nx2t += 1;
-
-	  nx3t = pD->GData[n][m][l].Nx[2];
-	  if(nx3t > 1) nx3t += 1;
-          if(nx2t*nx3t > x1cnt) x1cnt = nx2t*nx3t;
-	}
-	
-/* x2cnt is surface area of x2 faces */
-	if(pD->NGrid[1] > 1){
-	  nx1t = pD->GData[n][m][l].Nx[0];
-	  if(nx1t > 1) nx1t += 2*nghost;
-	  
-	  nx3t = pD->GData[n][m][l].Nx[2];
-	  if(nx3t > 1) nx3t += 1;
-          if(nx1t*nx3t > x2cnt) x2cnt = nx1t*nx3t;
-	}
-
-/* x3cnt is surface area of x3 faces */
-	if(pD->NGrid[2] > 1){
-	  nx1t = pD->GData[n][m][l].Nx[0];
-	  if(nx1t > 1) nx1t += 2*nghost;
-
-	  nx2t = pD->GData[n][m][l].Nx[1];
-	  if(nx2t > 1) nx2t += 2*nghost;
-          if(nx1t*nx2t > x3cnt) x3cnt = nx1t*nx2t;
-	}
-	}
-      }
-    }
-    size = x1cnt > x2cnt ? x1cnt : x2cnt;
-    size = x3cnt >  size ? x3cnt : size;
-
-    size *= nghost; /* Multiply by the third dimension */
-    if (size > 0) {
-    if((send_buf = (double**)calloc_2d_array(2,size,sizeof(double))) == NULL)
-      ath_error("[bvals_init]: Failed to allocate send buffer\n");
-
-    if((recv_buf = (double**)calloc_2d_array(2,size,sizeof(double))) == NULL)
-      ath_error("[bvals_init]: Failed to allocate recv buffer\n");
-  }
-
-  if((recv_rq = (MPI_Request*) calloc_1d_array(2,sizeof(MPI_Request))) == NULL)
-    ath_error("[bvals_init]: Failed to allocate recv MPI_Request array\n");
-  if((send_rq = (MPI_Request*) calloc_1d_array(2,sizeof(MPI_Request))) == NULL)
-    ath_error("[bvals_init]: Failed to allocate send MPI_Request array\n");
-
- #endif /* MPI_PARALLEL */
-
-  if(pG->Nx[0] > 1) {
-    if(apply_ix1 == NULL){
-      apply_ix1 = boundCondOptDepthLike_ix1;      
-    }
-    else {
-      ath_perr(-1,"[bvals_xray_init: ix1] error \n");      
-      exit(EXIT_FAILURE);
-    }
-    if(apply_ox1 == NULL){
-      apply_ox1 = boundCondOptDepthLike_ox1;      
-    }
-    else {
-      ath_perr(-1,"[bvals_xray_init: ox1] error \n");      
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  if(pG->Nx[1] > 1) {
-    if(apply_ix2 == NULL){
-      apply_ix2 = boundCondOptDepthLike_ix2;      
-    }
-    else {
-      ath_perr(-1,"[bvals_xray_init: ix2] error \n");      
-      exit(EXIT_FAILURE);
-    }
-    if(apply_ox2 == NULL){
-      apply_ox2 = boundCondOptDepthLike_ox2;      
-    }
-    else {
-      ath_perr(-1,"[bvals_xray_init: ox2] error \n");      
-      exit(EXIT_FAILURE);
-    }
-  }
- 
-  if(pG->Nx[2] > 1) {
-    if(apply_ix3 == NULL){
-      apply_ix3 = boundCondOptDepthLike_ix3;      
-    }
-    else {
-      ath_perr(-1,"[bvals_xray_init: ix3] error \n");      
-      exit(EXIT_FAILURE);
-    }
-    if(apply_ox3 == NULL){
-      apply_ox3 = boundCondOptDepthLike_ox3;      
-    }
-    else {
-      ath_perr(-1,"[bvals_xray_init: ox3] error \n");      
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  return;
-}
-
-
-
-void bvals_tau(DomainS *pD)
-{
-  GridS *pGrid = (pD->Grid);
-
-  
-#ifdef MPI_PARALLEL
-  //  int cnt1, cnt2, cnt3, cnt, ierr, ;
-  int cnt,ierr,mIndex;
-#endif /* MPI_PARALLEL */
-
-/*--- Step 1. ------------------------------------------------------------------
- * Boundary Conditions in x1-direction */
-
-#ifdef MPI_PARALLEL
-int  mpi1=1;
- while( mpi1==0 );
-  
-  if (pGrid->Nx[0] > 1){
-
-
-
-    cnt = nghost*(pGrid->Nx[1])*(pGrid->Nx[2]);
-
-/* MPI blocks to both left and right */
-    if (pGrid->rx1_id >= 0 && pGrid->lx1_id >= 0) {
-
-      /* Post non-blocking receives for data from L and R Grids */
-      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_id,LtoR_tag,
-        pD->Comm_Domain, &(recv_rq[0]));
-      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx1_id,RtoL_tag,
-        pD->Comm_Domain, &(recv_rq[1]));
-
-      /* pack and send data L and R */
-      pack_tau_ix1(pGrid);
-      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_id,RtoL_tag,
-        pD->Comm_Domain, &(send_rq[0]));
-
-      pack_tau_ox1(pGrid);
-      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx1_id,LtoR_tag,
-        pD->Comm_Domain, &(send_rq[1]));
-
-      /* check non-blocking sends have completed. */
-      ierr = MPI_Waitall(2, send_rq, MPI_STATUS_IGNORE);
-
-      /* check non-blocking receives and unpack data in any order. */
-      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
-      if (mIndex == 0) unpack_tau_ix1(pGrid);
-      if (mIndex == 1) unpack_tau_ox1(pGrid);
-      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
-      if (mIndex == 0) unpack_tau_ix1(pGrid);
-      if (mIndex == 1) unpack_tau_ox1(pGrid);
-
-    }
-
-/* Physical boundary on left, MPI block on right */
-    if (pGrid->rx1_id >= 0 && pGrid->lx1_id < 0) {
-
-      /* Post non-blocking receive for data from R Grid */
-      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx1_id,RtoL_tag,
-        pD->Comm_Domain, &(recv_rq[1]));
- 
-      /* pack and send data R */
-      pack_tau_ox1(pGrid);
-      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx1_id,LtoR_tag,
-        pD->Comm_Domain, &(send_rq[1]));
-
-      /* set physical boundary */
-      (*apply_ix1)(pGrid);
-
-      /* check non-blocking send has completed. */
-      ierr = MPI_Wait(&(send_rq[1]), MPI_STATUS_IGNORE);
-
-      /* wait on non-blocking receive from R and unpack data */
-      ierr = MPI_Wait(&(recv_rq[1]), MPI_STATUS_IGNORE);
-      unpack_tau_ox1(pGrid);
-
-    }
-
-/* MPI block on left, Physical boundary on right */
-    if (pGrid->rx1_id < 0 && pGrid->lx1_id >= 0) {
-
-      /* Post non-blocking receive for data from L grid */
-      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_id,LtoR_tag,
-        pD->Comm_Domain, &(recv_rq[0]));
-
-      /* pack and send data L */
-      pack_tau_ix1(pGrid);
-      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_id,RtoL_tag,
-        pD->Comm_Domain, &(send_rq[0]));
-
-      /* set physical boundary */
-      (*apply_ox1)(pGrid);
-
-      /* check non-blocking send has completed. */
-      ierr = MPI_Wait(&(send_rq[0]), MPI_STATUS_IGNORE);
-
-      /* wait on non-blocking receive from L and unpack data */
-      ierr = MPI_Wait(&(recv_rq[0]), MPI_STATUS_IGNORE);
-      unpack_tau_ix1(pGrid);
-
-    }
-#endif /* MPI_PARALLEL */
-
-/* Physical boundaries on both left and right */
-    if (pGrid->rx1_id < 0 && pGrid->lx1_id < 0) {
-      (*apply_ix1)(pGrid);
-      (*apply_ox1)(pGrid);
-
-    }
-
-  }
-
-
-/*--- Step 2. -----Boundary Conditions in x2-direction */
-
-  if( pGrid->Nx[1] > 1 ) {
-
-#ifdef MPI_PARALLEL
-
-    cnt = (pGrid->Nx[0] + 2*nghost)*nghost*(pGrid->Nx[2]);
-
-/* MPI blocks to both left and right */
-    if (pGrid->rx2_id >= 0 && pGrid->lx2_id >= 0) {
-
-      /* Post non-blocking receives for data from L and R Grids */
-      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx2_id,LtoR_tag,
-        pD->Comm_Domain, &(recv_rq[0]));
-      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx2_id,RtoL_tag,
-        pD->Comm_Domain, &(recv_rq[1]));
-
-      /* pack and send data L and R */
-      pack_tau_ix2(pGrid);
-      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx2_id,RtoL_tag,
-        pD->Comm_Domain, &(send_rq[0]));
-
-      pack_tau_ox2(pGrid);
-      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx2_id,LtoR_tag,
-        pD->Comm_Domain, &(send_rq[1]));
-
-      /* check non-blocking sends have completed. */
-      ierr = MPI_Waitall(2, send_rq, MPI_STATUS_IGNORE);
-
-      /* check non-blocking receives and unpack data in any order. */
-      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
-      if (mIndex == 0) unpack_tau_ix2(pGrid);
-      if (mIndex == 1) unpack_tau_ox2(pGrid);
-      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
-      if (mIndex == 0) unpack_tau_ix2(pGrid);
-      if (mIndex == 1) unpack_tau_ox2(pGrid);
-
-    }
-
-/* Physical boundary on left, MPI block on right */
-    if (pGrid->rx2_id >= 0 && pGrid->lx2_id < 0) {
-
-      /* Post non-blocking receive for data from R Grid */
-      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx2_id,RtoL_tag,
-        pD->Comm_Domain, &(recv_rq[1]));
-
-      /* pack and send data R */
-      pack_tau_ox2(pGrid);
-      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx2_id,LtoR_tag,
-        pD->Comm_Domain, &(send_rq[1]));
-
-      /* set physical boundary */
-      (*apply_ix2)(pGrid);
-
-      /* check non-blocking send has completed. */
-      ierr = MPI_Wait(&(send_rq[1]), MPI_STATUS_IGNORE);
-
-      /* wait on non-blocking receive from R and unpack data */
-      ierr = MPI_Wait(&(recv_rq[1]), MPI_STATUS_IGNORE);
-      unpack_tau_ox2(pGrid);
-
-    }
-
-/* MPI block on left, Physical boundary on right */
-    if (pGrid->rx2_id < 0 && pGrid->lx2_id >= 0) {
-
-      /* Post non-blocking receive for data from L grid */
-      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx2_id,LtoR_tag,
-        pD->Comm_Domain, &(recv_rq[0]));
-
-      /* pack and send data L */
-      pack_tau_ix2(pGrid);
-      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx2_id,RtoL_tag,
-        pD->Comm_Domain, &(send_rq[0]));
-
-      /* set physical boundary */
-      (*apply_ox2)(pGrid);
-
-      /* check non-blocking send has completed. */
-      ierr = MPI_Wait(&(send_rq[0]), MPI_STATUS_IGNORE);
-
-      /* wait on non-blocking receive from L and unpack data */
-      ierr = MPI_Wait(&(recv_rq[0]), MPI_STATUS_IGNORE);
-      unpack_tau_ix2(pGrid);
-
-    }
-#endif /* MPI_PARALLEL */
-
-/* Physical boundaries on both left and right */
-    if (pGrid->rx2_id < 0 && pGrid->lx2_id < 0) {
-      (*apply_ix2)(pGrid);
-      (*apply_ox2)(pGrid);
-    }
-
-/* shearing sheet BCs; function defined in problem generator */
-#ifdef SHEARING_BOX
-    get_myGridIndex(pD, myID_Comm_world, &myL, &myM, &myN);
-    if (myL == 0) {
-      ShearingSheet_grav_ix1(pD);
-    }
-    if (myL == (pD->NGrid[0]-1)) {
-      ShearingSheet_grav_ox1(pD);
-    }
-#endif
-
-  }
-
-/*--- Step 3. ------------------------------------------------------------------
- * Boundary Conditions in x3-direction */
-
-  if ( pGrid->Nx[2] > 1){
-
-#ifdef MPI_PARALLEL
-
-    cnt = (pGrid->Nx[0] + 2*nghost)*(pGrid->Nx[1] + 2*nghost)*nghost;
-
-/* MPI blocks to both left and right */
-    if (pGrid->rx3_id >= 0 && pGrid->lx3_id >= 0) {
-
-      /* Post non-blocking receives for data from L and R Grids */
-      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx3_id,LtoR_tag,
-        pD->Comm_Domain, &(recv_rq[0]));
-      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx3_id,RtoL_tag,
-        pD->Comm_Domain, &(recv_rq[1]));
-
-      /* pack and send data L and R */
-      pack_tau_ix3(pGrid);
-      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx3_id,RtoL_tag,
-        pD->Comm_Domain, &(send_rq[0]));
-
-      pack_tau_ox3(pGrid);
-      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx3_id,LtoR_tag,
-        pD->Comm_Domain, &(send_rq[1]));
-
-      /* check non-blocking sends have completed. */
-      ierr = MPI_Waitall(2, send_rq, MPI_STATUS_IGNORE);
-
-      /* check non-blocking receives and unpack data in any order. */
-      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
-      if (mIndex == 0) unpack_tau_ix3(pGrid);
-      if (mIndex == 1) unpack_tau_ox3(pGrid);
-      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
-      if (mIndex == 0) unpack_tau_ix3(pGrid);
-      if (mIndex == 1) unpack_tau_ox3(pGrid);
-
-    }
-
-/* Physical boundary on left, MPI block on right */
-    if (pGrid->rx3_id >= 0 && pGrid->lx3_id < 0) {
-
-      /* Post non-blocking receive for data from R Grid */
-      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx3_id,RtoL_tag,
-        pD->Comm_Domain, &(recv_rq[1]));
-
-      /* pack and send data R */
-      pack_tau_ox3(pGrid);
-      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx3_id,LtoR_tag,
-        pD->Comm_Domain, &(send_rq[1]));
-
-      /* set physical boundary */
-      (*apply_ix3)(pGrid);
-
-      /* check non-blocking send has completed. */
-      ierr = MPI_Wait(&(send_rq[1]), MPI_STATUS_IGNORE);
-
-      /* wait on non-blocking receive from R and unpack data */
-      ierr = MPI_Wait(&(recv_rq[1]), MPI_STATUS_IGNORE);
-      unpack_tau_ox3(pGrid);
-
-    }
-
-/* MPI block on left, Physical boundary on right */
-    if (pGrid->rx3_id < 0 && pGrid->lx3_id >= 0) {
-
-      /* Post non-blocking receive for data from L grid */
-      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx3_id,LtoR_tag,
-        pD->Comm_Domain, &(recv_rq[0]));
-
-      /* pack and send data L */
-      pack_tau_ix3(pGrid);
-      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx3_id,RtoL_tag,
-        pD->Comm_Domain, &(send_rq[0]));
-
-      /* set physical boundary */
-      (*apply_ox3)(pGrid);
-
-      /* check non-blocking send has completed. */
-      ierr = MPI_Wait(&(send_rq[0]), MPI_STATUS_IGNORE);
-
-      /* wait on non-blocking receive from L and unpack data */
-      ierr = MPI_Wait(&(recv_rq[0]), MPI_STATUS_IGNORE);
-      unpack_tau_ix3(pGrid);
-    }
-#endif /* MPI_PARALLEL */
-
-/* Physical boundaries on both left and right */
-    if (pGrid->rx3_id < 0 && pGrid->lx3_id < 0) {
-      (*apply_ix3)(pGrid);
-      (*apply_ox3)(pGrid);
-    }
-
-  }
-
-  return;
-}
-
-
-
-
-
-#ifdef MPI_PARALLEL  
-
-/*! \fn static void pack_tau_ix1(GridS *pG)
- *  \brief PACK boundary conditions for MPI_Isend, Inner x1 boundary */
-
-static void pack_tau_ix1(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pSnd;
-  pSnd = (double*)&(send_buf[0][0]);
-
-/* Pack only tau into send buffer */
-  for (k=ks; k<=ke; k++){
-    for (j=js; j<=je; j++){
-      for (i=is; i<=is+(nghost-1); i++){
-        *(pSnd++) = pG->tau_e[k][j][i];
-      }
-    }
-  }
-
-  return;
-}
-/*----------------------------------------------------------------------------*/
-/*! \fn static void pack_tau_ox1(GridS *pG)
- *  \brief PACK boundary conditions for MPI_Isend, Outer x1 boundary */
-
-static void pack_tau_ox1(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pSnd;
-  pSnd = (double*)&(send_buf[1][0]);
-
-/* Pack only tau into send buffer */
-  for (k=ks; k<=ke; k++){
-    for (j=js; j<=je; j++){
-      for (i=ie-(nghost-1); i<=ie; i++){
-        *(pSnd++) = pG->tau_e[k][j][i];
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void pack_tau_ix2(GridS *pG)
- *  \brief PACK boundary conditions for MPI_Isend, Inner x2 boundary */
-
-static void pack_tau_ix2(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pSnd;
-  pSnd = (double*)&(send_buf[0][0]);
-
-/* Pack only tau into send buffer */
-  for (k=ks; k<=ke; k++){
-    for (j=js; j<=js+(nghost-1); j++){
-      for (i=is-nghost; i<=ie+nghost; i++){
-        *(pSnd++) = pG->tau_e[k][j][i];
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void pack_tau_ox2(GridS *pG)
- *  \brief PACK boundary conditions for MPI_Isend, Outer x2 boundary */
-
-static void pack_tau_ox2(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pSnd;
-  pSnd = (double*)&(send_buf[1][0]);
-
-/* Pack only tau into send buffer */
-
-  for (k=ks; k<=ke; k++){
-    for (j=je-(nghost-1); j<=je; j++){
-      for (i=is-nghost; i<=ie+nghost; i++){
-        *(pSnd++) = pG->tau_e[k][j][i];
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void pack_tau_ix3(GridS *pG)
- *  \brief PACK boundary conditions for MPI_Isend, Inner x3 boundary */
-
-static void pack_tau_ix3(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pSnd;
-  pSnd = (double*)&(send_buf[0][0]);
-
-/* Pack only tau into send buffer */
-
-  for (k=ks; k<=ks+(nghost-1); k++){
-    for (j=js-nghost; j<=je+nghost; j++){
-      for (i=is-nghost; i<=ie+nghost; i++){
-        *(pSnd++) = pG->tau_e[k][j][i];
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void pack_tau_ox3(GridS *pG)
- *  \brief PACK boundary conditions for MPI_Isend, Outer x3 boundary */
-
-static void pack_tau_ox3(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pSnd;
-  pSnd = (double*)&(send_buf[1][0]);
-
-/* Pack only tau into send buffer */
-
-  for (k=ke-(nghost-1); k<=ke; k++){
-    for (j=js-nghost; j<=je+nghost; j++){
-      for (i=is-nghost; i<=ie+nghost; i++){
-        *(pSnd++) = pG->tau_e[k][j][i];
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void unpack_tau_ix1(GridS *pG)
- *  \brief UNPACK boundary conditions after MPI_Irecv, Inner x1 boundary */
-
-static void unpack_tau_ix1(GridS *pG)
-{
-  int is = pG->is;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pRcv;
-  pRcv = (double*)&(recv_buf[0][0]);
-
-/* Manually unpack the data from the receive buffer */
-
-  for (k=ks; k<=ke; k++){
-//    for (j=js; j<=js; j++){
-//MODIFIED BY HAO GONG
-    for (j=js; j<=je; j++){
-      for (i=is-nghost; i<=is-1; i++){
-        pG->tau_e[k][j][i] = *(pRcv++);
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void unpack_tau_ox1(GridS *pG)
- *  \brief UNPACK boundary conditions after MPI_Irecv, Outer x1 boundary */
-
-static void unpack_tau_ox1(GridS *pG)
-{
-  int ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pRcv;
-  pRcv = (double*)&(recv_buf[1][0]);
-
-/* Manually unpack the data from the receive buffer */
-
-  for (k=ks; k<=ke; k++){
-    for (j=js; j<=je; j++){
-      for (i=ie+1; i<=ie+nghost; i++){
-        pG->tau_e[k][j][i] = *(pRcv++);
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void unpack_tau_ix2(GridS *pG)
- *  \brief UNPACK boundary conditions after MPI_Irecv, Inner x2 boundary */
-
-static void unpack_tau_ix2(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pRcv;
-  pRcv = (double*)&(recv_buf[0][0]);
-
-/* Manually unpack the data from the receive buffer */
-
-  for (k=ks; k<=ke; k++){
-    for (j=js-nghost; j<=js-1; j++){
-      for (i=is-nghost; i<=ie+nghost; i++){
-        pG->tau_e[k][j][i] = *(pRcv++);
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void unpack_tau_ox2(GridS *pG)
- *  \brief UNPACK boundary conditions after MPI_Irecv, Outer x2 boundary */
-
-static void unpack_tau_ox2(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int je = pG->je;
-  int ks = pG->ks, ke = pG->ke;
-  int i,j,k;
-  double *pRcv;
-  pRcv = (double*)&(recv_buf[1][0]);
-
-/* Manually unpack the data from the receive buffer */
-
-  for (k=ks; k<=ke; k++){
-    for (j=je+1; j<=je+nghost; j++){
-      for (i=is-nghost; i<=ie+nghost; i++){
-        pG->tau_e[k][j][i] = *(pRcv++);
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void unpack_tau_ix3(GridS *pG)
- *  \brief UNPACK boundary conditions after MPI_Irecv, Inner x3 boundary */
-
-static void unpack_tau_ix3(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ks = pG->ks;
-  int i,j,k;
-  double *pRcv;
-  pRcv = (double*)&(recv_buf[0][0]);
-
-/* Manually unpack the data from the receive buffer */
-
-  for (k=ks-nghost; k<=ks-1; k++){
-    for (j=js-nghost; j<=je+nghost; j++){
-      for (i=is-nghost; i<=ie+nghost; i++){
-        pG->tau_e[k][j][i] = *(pRcv++);
-      }
-    }
-  }
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \fn static void unpack_tau_ox3(GridS *pG)
- *  \brief UNPACK boundary conditions after MPI_Irecv, Outer x3 boundary */
-
-static void unpack_tau_ox3(GridS *pG)
-{
-  int is = pG->is, ie = pG->ie;
-  int js = pG->js, je = pG->je;
-  int ke = pG->ke;
-  int i,j,k;
-  double *pRcv;
-  pRcv = (double*)&(recv_buf[1][0]);
-
-/* Manually unpack the data from the receive buffer */
-
-  for (k=ke+1; k<=ke+nghost; k++){
-    for (j=js-nghost; j<=je+nghost; j++){
-      for (i=is-nghost; i<=ie+nghost; i++){
-        pG->tau_e[k][j][i] = *(pRcv++);
-      }
-    }
-  }
-
-  return;
-}
-#endif /* MPI_PARALLEL */
-static void boundCondOptDepthLike_ix1(GridS *pGrid)
-{
-  int is = pGrid->is;
-  int js = pGrid->js, je = pGrid->je;
-  int ks = pGrid->ks, ke = pGrid->ke;
-  int i,j,k;
-#ifdef RADIAL_RAY_TEST
-  Real x1,x2,x3, rsph;
-#endif 
-  for (k=ks; k<=ke; k++) {
-    for (j=js; j<=je; j++) {
-      for (i=1; i<=nghost; i++) {
-	
-	pGrid->tau_e[k][j][is-i] = 0.;
-
-#ifdef RADIAL_RAY_TEST	 	 
-	cc_pos(pGrid,i,j,k,&x1,&x2,&x3);
-	rsph =  sqrt(pow(x1 - rRadSrc[0], 2) + pow(x3 - rRadSrc[1] ,2));	
-	pGrid->tau_e[k][j][is-i] = rsph;	
-#endif
-	
-	/* pGrid->tau_e[k][j][is-i] = pGrid->tau_e[k][j][is+(i-1)]; */
-
-      }
-    }
-  }
-
-  return; 
-}
-static void boundCondOptDepthLike_ox1(GridS *pGrid)
-{
-  int ie = pGrid->ie;
-  int js = pGrid->js, je = pGrid->je;
-  int ks = pGrid->ks, ke = pGrid->ke;
-  int i,j,k;
-
-  for (k=ks; k<=ke; k++) {
-    for (j=js; j<=je; j++) {
-      for (i=1; i<=nghost; i++) {
-        pGrid->tau_e[k][j][ie+i] = pGrid->tau_e[k][j][ie-(i-1)];
-      }
-    }
-  }
-
-  return;
-
-}
-
-static void boundCondOptDepthLike_ix2(GridS *pGrid)
-{
-  int is = pGrid->is, ie = pGrid->ie;
-  int js = pGrid->js;
-  int ks = pGrid->ks, ke = pGrid->ke;
-  int i,j,k;
-
-  for (k=ks; k<=ke; k++) {
-    for (j=1; j<=nghost; j++) {
-      for (i=is-nghost; i<=ie+nghost; i++) {
-        pGrid->tau_e[k][js-j][i]    =  pGrid->tau_e[k][js+(j-1)][i];
-      }
-    }
-  }
-
-  return;
-}
-static void boundCondOptDepthLike_ox2(GridS *pGrid)
-{
-   int is = pGrid->is, ie = pGrid->ie;
-  int je = pGrid->je;
-  int ks = pGrid->ks, ke = pGrid->ke;
-  int i,j,k;
-
-  for (k=ks; k<=ke; k++) {
-    for (j=1; j<=nghost; j++) {
-      for (i=is-nghost; i<=ie+nghost; i++) {
-        pGrid->tau_e[k][je+j][i] = pGrid->tau_e[k][je-(j-1)][i];
-      }
-    }
-  }
-
-  return;
-}
-
-
-static void boundCondOptDepthLike_ix3(GridS *pGrid)
-{
-  int is = pGrid->is, ie = pGrid->ie;
-  int js = pGrid->js, je = pGrid->je;
-  int ks = pGrid->ks;
-  int i,j,k;
-
-  for (k=1; k<=nghost; k++) {
-    for (j=js-nghost; j<=je+nghost; j++) {
-      for (i=is-nghost; i<=ie+nghost; i++) {
-        pGrid->tau_e[ks-k][j][i] = pGrid->tau_e[ks+(k-1)][j][i];
-      }
-    }
-  }
-
-  return;
-}
-static void boundCondOptDepthLike_ox3(GridS *pGrid)
-{
-   int is = pGrid->is, ie = pGrid->ie;
-  int js = pGrid->js, je = pGrid->je;
-  int ke = pGrid->ke;
-  int i,j,k;
-
-  for (k=1; k<=nghost; k++) {
-    for (j=js-nghost; j<=je+nghost; j++) {
-      for (i=is-nghost; i<=ie+nghost; i++) {
-        pGrid->tau_e[ke+k][j][i] = pGrid->tau_e[ke-(k-1)][j][i];
-      }
-    }
-  }
-
-  return;
-}
-
-
-/* ============================================================================= */
-/*                      end of boundary conditions */
-/* ============================================================================= */
-
-
-void testRayTracings(GridS *pG){
+void testRayTracings( MeshS *pM, GridS *pG){
     Real r, t, z, l,dl, ri, tj, zk,
     tau=0,dtau=0,tau_ghost,xi=0,x1,x2,x3;      
    
@@ -2796,10 +2217,10 @@ void testRayTracings(GridS *pG){
 
     Real abs_cart_norm, cart_norm[3], cyl_norm[3], xyz_pos[3], rtz_pos[3], xyz_p[3],
       res[1];
-    int ijk_cur[3],iter,iter_max, lr, ir=0, i0,j0,k0;
+    int ijk_cur[3],iter,iter_max, lr, ir=0, i0,j0,k0, i1,j1,k1;
     short nroot;
 
-    Real xyz_in[3], radSrcCyl[3], dist, sint, cost, tmp;
+    Real xyz_in[3], radSrcCyl[3], tmp[3], dist, sint, cost;
 
        
   printf("hello from test ray-tracing \n");
@@ -2817,14 +2238,21 @@ void testRayTracings(GridS *pG){
   ju = je + nghost*(je > js);
   ku = ke + nghost*(ke > ks);
 
-  /* start point */
-  radSrcCyl[0]=1.;
-  radSrcCyl[1]=-1;
-  radSrcCyl[2]=4.;
+
+  radSrcCyl[0] = rRadSrc[0];
+  radSrcCyl[1] = 0.;
+  radSrcCyl[2] = rRadSrc[1];
+
+  /* start point */ 
+  radSrcCyl[0]=0.01;
+  radSrcCyl[1]=0.;
+  radSrcCyl[2]=0.1;
   /* end point */
-  x1 = 6.;
-  x2 = 1.;
-  x3 = -4.;
+ 
+    
+  x1 =  0.073083504695681381;
+  x2 = -0.50423114872188946;
+  x3 = -4.5;
   
   lr=celli(pG,radSrcCyl[0], 1./pG->dx1, &i0, &ir);
   lr=cellj(pG,radSrcCyl[1], 1./pG->dx2, &j0, &ir);
@@ -2837,6 +2265,8 @@ void testRayTracings(GridS *pG){
   //  corrected location of the source on the grid
   cc_pos(pG,i0,j0,k0,&rtz_pos[0],&rtz_pos[1],&rtz_pos[2]);
 
+  
+  
   for(i=0;i<=2;i++) radSrcCyl[i]=rtz_pos[i];
 
   coordCylToCart(xyz_in, radSrcCyl, cos(radSrcCyl[1]), sin(radSrcCyl[1]) );
@@ -2926,7 +2356,7 @@ void testRayTracings(GridS *pG){
   return;
 }
 
-
+//#define DEBUG_traceGridCell
 void traceGridCell(GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
 		   Real* rtz_pos, const Real *cart_norm, const Real *cyl_norm,
 		   short* nroot) {
@@ -2936,7 +2366,7 @@ void traceGridCell(GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
       above boundaries belong */
   // traces a cingle cell; cnorm is in Cart. coordinates;
 
-  int change_indx, icur, jcur, kcur;
+  int change_indx, icur, jcur, kcur, crosPhiConstPlanes=0;
 
   Real a,b,c, rfc, zfc, d,tfc,sint,cost,
     L=HUGE_NUMBER, L1=HUGE_NUMBER, L2=HUGE_NUMBER,
@@ -2958,7 +2388,8 @@ void traceGridCell(GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
      xcur = xyz_pos[0];   /*  are on Cart. grid */
      ycur=  xyz_pos[1];
      zcur=  xyz_pos[2];
-  
+
+
       /*  1)  intersection with cylinders  */     
      
      if(cyl_norm[0]>0){       
@@ -2968,7 +2399,8 @@ void traceGridCell(GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
        rfc = pG->MinX[0] + ((Real)(icur - pG->is))*pG->dx1;
      }
        else{ /* nr==0: almost never happens*/
-	 goto z_planes;
+
+	   goto z_planes;
      }
      change_indx = 0;
        
@@ -2978,7 +2410,10 @@ void traceGridCell(GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
      d = pow(b,2)-4.*a*c;
 
      if (d<0){ /* possibly at a grazing angle to a cylinder */
-       printf("Discr<0. in traceACell\n");
+
+   #ifdef DEBUG_traceGridCell
+    	 printf("Discr<0. in traceACell\n");
+   #endif
        goto z_planes;
      }
 
@@ -2987,9 +2422,12 @@ void traceGridCell(GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
       L2 = fabs(-b-sqrt(d))/2.*one_over_a;
       L = fmin(fabs(L1),fabs(L2));
       nroot++; 
+	#ifdef DEBUG_traceGridCell
       printf("Lr= %f nr= %f \n", L, cyl_norm[0]);
-      
-      /*  3)  intersection with planes z_k=const  */
+	#endif
+//      goto lab1;
+
+      /*  2)  intersection with planes z_k=const  */
     z_planes:
       if(cyl_norm[2]>0){
 	zfc = pG->MinX[2] + ((Real)(kcur - pG->ks) +1.)*pG->dx3;
@@ -3004,17 +2442,25 @@ void traceGridCell(GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
 
      
 
-      if (L1 < L){ /*min of Lr or Lz */
+      if (L1 <= L){ /*min of Lr or Lz */
        change_indx = 2;
        L=L1;
        nroot++;
 
-       printf("Lz= %f , nr= %f \n", L1, cyl_norm[1]);
+	#ifdef DEBUG_traceGridCell
+       printf("Lz= %f , nz= %f \n", L1, cyl_norm[2]);
+	#endif
       }
    
+
+
+
       /*  3)  intersection with planes phi_j=const */
     phi_planes:
-      if(cyl_norm[1]>0){
+
+	if( crosPhiConstPlanes == 1){
+
+	  if(cyl_norm[1]>0){
        tfc = pG->MinX[1] + ((Real)(jcur - pG->js)+1)*pG->dx2;
       }
       else if(cyl_norm[1]<0.){
@@ -3033,18 +2479,24 @@ void traceGridCell(GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
       	  change_indx = 1;
       	  L=L1;
           nroot++;	  
+	#ifdef DEBUG_traceGridCell
 	  printf("Lt= %f \n", L1);
+	#endif
       	}
       }
+	}
 
-      res[0] = L;
+//lab1:
+	  res[0] = L;
 
       xyz_pos[0] += cart_norm[0]*L; 
       xyz_pos[1] += cart_norm[1]*L;
       xyz_pos[2] += cart_norm[2]*L;
 
       ijk_cur[change_indx] += (int)copysign(1, cyl_norm[change_indx]);
-
+	#ifdef DEBUG_traceGridCell
+      printf(" === end  traceCell === \n");
+	#endif
 } //end  traceCell
 
 void coordCylToCart(Real *xyz, const Real *rtz,
@@ -3081,4 +2533,318 @@ void normVectBToA(Real* v, const Real* A, const Real*B, Real* tmp){
     v[2] /= *tmp;
 }
 
+
+#ifdef MPI_PARALLEL
+
+void cc_posGlob(const MeshS *pM, const GridS *pG, const int iloc, const int jloc,const int kloc,
+	    Real *px1, Real *px2, Real *px3)
+//returns cell-centered x1,x2,x3 on global mesh, needed for XRAYs
+{ 
+  *px1 = pM->RootMinX[0] + ((Real)(iloc - pG->is + pG->Disp[0]) + 0.5)*pG->dx1; 
+  *px2 = pM->RootMinX[1] + ((Real)(jloc  - pG->js + pG->Disp[1]) + 0.5)*pG->dx2;
+  *px3 = pM->RootMinX[2] + ((Real)(kloc - pG->ks + pG->Disp[2]) + 0.5)*pG->dx3;
+  return;
+}
+
+void ijkLocToGlob(const GridS *pG, const int iloc, const int jloc, const int kloc,
+		  int *iglob, int *jglob, int *kglob)
+{
+  *iglob = iloc - pG->is + pG->Disp[0];  
+  *jglob = jloc - pG->js + pG->Disp[1];  
+  *kglob = kloc - pG->ks + pG->Disp[2];
+  /* printf("%d %d \n%", iloc - pG->is + pG->Disp[0], *iglob); */   
+  return;
+}
+
+void initGlobComBuffer( const GridS *pG )
+{
+  
+  MPI_Status status;
+  MPI_Request request;
+  
+  int  my_id, ierr,  im, jm, km, size;
+  int is,ie,js,je,ks,ke;
+  int ext_id,check_id;
+  int BufBndr1[6];
+ 
+  MPI_Comm_size(MPI_COMM_WORLD, &SizeGlob);
+  
+   is = pG->is; ie = pG->ie;
+   js = pG->js; je = pG->je;
+   ks = pG->ks; ke = pG->ke;
+    
+   MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
+
+   /* printf("SizeGlob, .... my_id, %d %d \n", SizeGlob, my_id ); */
+   
+   if((recv_rq = (MPI_Request*) calloc_1d_array(SizeGlob,sizeof(MPI_Request))) == NULL)
+    ath_error("[problem]: Failed to allocate recv MPI_Request array\n");
+
+   if((send_rq = (MPI_Request*) calloc_1d_array(SizeGlob,sizeof(MPI_Request))) == NULL)
+    ath_error("[problem]: Failed to allocate send MPI_Request array\n");
+
+   if((BufBndr = (int**)calloc_2d_array(SizeGlob, 6, sizeof(int) )) == NULL)
+      ath_error("[initGlobBuffer]: Failed to allocate BufBndr buffer\n");
+ 
+   printf("-------------------------------------\n");
+  
+   
+   MPI_Reduce(&ie, &im, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);   
+   MPI_Reduce(&je, &jm, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+   MPI_Reduce(&ke, &km, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+
+   /* calculate index position of the local patch in global mesh   */
+   ijkLocToGlob(pG, is, js, ks,  &(BufBndr1[0]), &(BufBndr1[1]), &(BufBndr1[2]));
+   ijkLocToGlob(pG, ie, je, ke,  &(BufBndr1[3]), &(BufBndr1[4]), &(BufBndr1[5]));
+
+    /* printf(" after ijkLocToGlob BufBndr1:  %d  %d  %d %d  %d  %d  %d \n\n", */
+    /* 	 	BufBndr1[0], BufBndr1[1], BufBndr1[2], */
+    /* 	 	BufBndr1[3], BufBndr1[4], BufBndr1[5], */
+    /* 	 	my_id); */
+
+    /* printf(" SizeGlob = %d \n", SizeGlob); */
+    
+    
+    
+   if (my_id == 0) {
+
+     for (int ii = 0; ii<=5; ii++) BufBndr[0][ii] = BufBndr1[ii];
+     
+     printf(" im, jm, km =  %d %d %d\n", im, jm, km);
+       size = im*jm*km;
+       BufSize = size;
+       ibufe = im;
+       jbufe = jm;
+       kbufe =km;
+
+       // receive message from any source
+       for (int i=1; i<SizeGlob; i++){
+
+	 ierr = MPI_Irecv(&(BufBndr1),6,MPI_INT,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&request);
+
+	 ierr = MPI_Wait(&request,&status);
+
+	 ext_id=status.MPI_SOURCE;
+
+	 for (int ii = 0; ii<=5; ii++) BufBndr[ext_id][ii] = BufBndr1[ii];
+
+	 /* printf(" receiving at 0  BufBndr1: %d  %d  %d %d  %d  %d  %d \n", */
+	 /* 	BufBndr1[0], BufBndr1[1], BufBndr1[2], */
+	 /* 	BufBndr1[3], BufBndr1[4], BufBndr1[5], */
+	 /* 	status.MPI_SOURCE); */
+	 /* printf(" from %d %d  \n", i, SizeGlob); */
+	 	
+
+
+       } //received from all my_id(s)
+
+       /* printf(" Received all BufBndr at my_id = 0 : \n"); */
+
+       /* for (int ii = 0; ii<SizeGlob; ii++){ */
+       /* 	 printf(" id %d \n", ii); */
+       /* 	 printf(" %d  %d  %d %d  %d  %d  \n", */
+       /* 		BufBndr[ii][0], BufBndr[ii][1], BufBndr[ii][2], BufBndr[ii][3], BufBndr[ii][4], BufBndr[ii][5]); */
+       /* } */
+       
+       /* MPI_Barrier(MPI_COMM_WORLD); */
+       
+  
+       /* MPI_Bcast(&(BufBndr[0]), 6 * SizeGlob, MPI_INT, 0, MPI_COMM_WORLD); */
+
+       /* printf(" igs, jgs, kgs,  id, %d  %d  %d %d  %d  %d  %d \n", */
+       /* 	 	BufBndr[ext_id][0], BufBndr[ext_id][1], BufBndr[ext_id][2], */
+       /* 	 	BufBndr[ext_id][3], BufBndr[ext_id][4], BufBndr[ext_id][5], */
+       /* 	 	status.MPI_SOURCE); */
+
+   }
+   
+   else { /* my_id is not 0 */
+
+     ext_id = my_id;
+
+     /* printf("sending my_id from %d to 0\n", ext_id); */
+     /* printf(" sending igs, jgs, kgs,  id, %d  %d  %d %d  %d  %d  %d \n", */
+     /* 	 	BufBndr1[0], BufBndr1[1], BufBndr1[2], */
+     /* 	 	BufBndr1[3], BufBndr1[4], BufBndr1[5], */
+     /* 	 	status.MPI_SOURCE); */
+
+     for (int ii = 1; ii<=5; ii++) BufBndr[ext_id][ii] = BufBndr1[ii];
+	  
+     ierr = MPI_Isend(&(BufBndr1), 6, MPI_INT, 0, 0, MPI_COMM_WORLD, &request);     
+     
+     ierr = MPI_Wait(&request, MPI_STATUS_IGNORE);
+
+    
+     
+   } /* my_id split end */
+
+   /* broadcasting to all about global buffer */
+   MPI_Bcast(&BufSize, 1, MPI_INT,   0, MPI_COMM_WORLD);
+   MPI_Bcast(&ibufe,   1, MPI_INT,   0, MPI_COMM_WORLD);
+   MPI_Bcast(&jbufe,   1, MPI_INT,   0, MPI_COMM_WORLD);
+   MPI_Bcast(&kbufe,   1, MPI_INT,   0, MPI_COMM_WORLD);
+   printf(" ibufe, jbufe, kbufe, BufSize,  id,  %d  %d  %d  %d %d \n\n", ibufe, jbufe, kbufe,
+   	      BufSize, my_id);
+
+   /* for(int ii=0; ii<=SizeGlob; ii++){ */
+   /* 	 printf(" ig, jg, kg,  id, %d  %d  %d %d  %d  %d my_id= %d \n", */
+   /* 	 	BufBndr[ext_id][0], BufBndr[ext_id][1], BufBndr[ext_id][2], */
+   /* 	 	BufBndr[ext_id][3], BufBndr[ext_id][4], BufBndr[ext_id][5], */
+   /* 	 	ii); */
+   /* } */
+   
+   if((send_buf = (double**)calloc_2d_array(2,BufSize,sizeof(double))) == NULL)
+      ath_error("[initGlobBuffer]: Failed to allocate send buffer\n");
+
+   if((recv_buf = (double**)calloc_2d_array(2,BufSize,sizeof(double))) == NULL)
+      ath_error("[initGlobBuffer]: Failed to allocate recv buffer\n");
+    
+return;
+}
+
+
+void SyncGridsGlob(MeshS *pM, DomainS *pDomain, GridS *pG)
+  /* syncs grid patches to global var */
+{
+  printf( "from SyncGridsGlob \n" );
+
+  int my_id;
+   
+  MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
+   
+  int token, ierr;
+  
+  printf("SyncGridsGlob::,  my_id = %d,  \n",(int)my_id );
+
+         int check_id = 1;
+	 printf(" ig, jg, kg,  id, %d  %d  %d %d  %d  %d \n",
+	 	BufBndr[check_id][0], BufBndr[check_id][1], BufBndr[check_id][2],
+	 	BufBndr[check_id][3], BufBndr[check_id][4], BufBndr[check_id][5]);
+
+ 
+  if(my_id == 0) {
+
+    ierr = MPI_Irecv(&BufBndr[0], 6, MPI_INT, 1, 0, MPI_COMM_WORLD,  &(recv_rq[0]));
+    ierr = MPI_Wait(&(recv_rq[0]), MPI_STATUS_IGNORE);
+
+    printf("========================================\n");
+    printf(" igs, jgs, kgs,  id, %d  %d  %d %d  %d  %d  %d \n", BufBndr[0], BufBndr[1], BufBndr[2],
+    	  BufBndr[3], BufBndr[4], BufBndr[5], my_id);
+
+    
+    //  ierr = MPI_Irecv(&(recv_buf[1][0]), BufSize, MPI_INT, 1, 0, MPI_COMM_WORLD,  &(recv_rq[1]));
+
+    
+  /* wait on non-blocking receive and unpack data */
+    // ierr = MPI_Wait(&(recv_rq[1]), MPI_STATUS_IGNORE);
+
+    //unPackGridForGlob(pG);
+      
+    //printf(" unPackGridForGlob done \n");
+
+  }
+  else {
+
+    printf("sending from %d \n", my_id);
+
+    packGridForGlob(pG);       
+
+    //printf("BufSize = %d \n", BufSize); 
+    
+    ierr = MPI_Isend(&(BufBndr[0]), 6, MPI_INT, 0, 0, MPI_COMM_WORLD, &(send_rq[0]));
+    
+    //    ierr = MPI_Isend(&(send_buf[1][0]), BufSize, MPI_INT, 0, 0, MPI_COMM_WORLD, &(send_rq[1]));
+    
+     /* check non-blocking send has completed. */
+    ierr = MPI_Wait(&(send_rq[0]), MPI_STATUS_IGNORE);
+  
+      
+  }
+   
+  printf("done \n");
+  //getchar();
+ 
+
+    
+  printf("domain %d \n", (int)(pDomain->Comm_Domain)); 
+
+  getchar();
+  return;
+
+}
+
+static void packGridForGlob(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+
+  Real *pSnd;
+  pSnd = (Real*)&(send_buf[1][0]);
+  
+  for (k=ks; k<=ke; k++) {
+    for (j=js; j<=je; j++) {
+      for (i=is; i<=ie; i++) {
+	
+        *(pSnd++) = pG->U[k][j][i].d;
+	//	printf("%f \n", pG->U[k][j][i].d);
+	
+      }
+    }
+  }
+  return;
+}
+
+static void unPackGridForGlob(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+
+  double *pRcv;
+  pRcv = (double*)&(recv_buf[1][0]);
+  printf("unPackGridForGlob \n");
+  
+    for (k=ks; k<=ke; k++) {
+      for (j=js; j<=je; j++) {
+	for (i=is; i<=ie; i++) {
+	  pG->yglob[k][j][i].ro  = *(pRcv++);
+	  /* printf(" %f \n ", pG->yglob[k][j][i].ro); */
+	}
+      }
+    }
+
+}
+
+
+/* static void pack2dIntArrayForGlob(int **Send2dBuf, int *ie, int* je) */
+/* { */
+/*   int i,j,k; */
+
+/*   Real *pSnd; */
+
+/*   pSnd = (int*)&(Send2dBuf[0]); */
+  
+
+/*   for (i=0; i<= *ie; i++) { */
+/*     for (j=0; j<= *je; j++) { */
+  	
+/*       *(pSnd++) = Send2dBuf[i][j]; */
+/*       printf("*pSnd = %d \n ", *pSnd);  */
+/*       } */
+/*   } */
+/*   return; */
+/* } */
+
+
+void freeGlobArrays()
+{
+  free_1d_array(recv_rq);
+  free_1d_array(send_rq);
+  free_2d_array(BufBndr);
+}
+#endif 
 

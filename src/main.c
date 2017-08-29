@@ -394,7 +394,7 @@ int main(int argc, char *argv[])
   } else {                           /* New problem */
     for (nl=0; nl<(Mesh.NLevels); nl++){ 
       for (nd=0; nd<(Mesh.DomainsPerLevel[nl]); nd++){  
-        if (Mesh.Domain[nl][nd].Grid != NULL) problem(&(Mesh.Domain[nl][nd]));
+        if (Mesh.Domain[nl][nd].Grid != NULL) problem(&Mesh, &(Mesh.Domain[nl][nd]));
       }
     }
   }
@@ -447,11 +447,7 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef XRAYS   
- /* AD initialize buffers for tau in MPI  */
-
-  /* int  mpi1=1; */
-  /* while( mpi1==1 ); */
-
+ 
   bvals_tau_init(&Mesh);
 
 #endif
@@ -553,7 +549,8 @@ int main(int argc, char *argv[])
           if (Mesh.Domain[nl][nd].Grid != NULL){
 
             bvals_mhd(&(Mesh.Domain[nl][nd]));
-
+	    
+	    
           }
       }}
 #ifdef STATIC_MESH_REFINEMENT

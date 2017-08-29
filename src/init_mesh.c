@@ -713,6 +713,8 @@ void init_mesh(MeshS *pM)
     ierr = MPI_Group_incl(world_group,Nranks,ranks,&(pD->Group_Domain));
     ierr = MPI_Comm_create(MPI_COMM_WORLD,pD->Group_Domain,&(pD->Comm_Domain));
 
+    printf("init_mesh %d \n", (int)(pD->Comm_Domain)); //getchar();
+
   }}
 
   free_1d_array(ranks);

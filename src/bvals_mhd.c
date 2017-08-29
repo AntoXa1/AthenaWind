@@ -3181,3 +3181,941 @@ static void unpack_ox3(GridS *pG)
   return;
 }
 #endif /* MPI_PARALLEL */
+
+
+
+
+/* ============================================================================== */
+/*                           Boundary conditions for optical depth stack          */
+/* ===============================================================================*/
+
+
+//#ifdef MPI_PARALLEL
+/* MPI send and receive buffers */
+/* static double **send_buf = NULL, **recv_buf = NULL; */
+/* static MPI_Request *recv_rq, *send_rq; */
+//#endif /* MPI_PARALLEL */
+
+//  \brief Generic void function of Grid. 
+/* boundary condition function pointers. local to this function  */
+static VGFun_t apply_ix1 = NULL, apply_ox1 = NULL;  
+static VGFun_t apply_ix2 = NULL, apply_ox2 = NULL;
+static VGFun_t apply_ix3 = NULL, apply_ox3 = NULL;
+
+#ifdef MPI_PARALLEL
+static void pack_tau_ix1(GridS *pG);
+static void pack_tau_ox1(GridS *pG);
+static void pack_tau_ix2(GridS *pG);
+static void pack_tau_ox2(GridS *pG);
+static void pack_tau_ix3(GridS *pG);
+static void pack_tau_ox3(GridS *pG);
+
+static void unpack_tau_ix1(GridS *pG);
+static void unpack_tau_ox1(GridS *pG);
+static void unpack_tau_ix2(GridS *pG);
+static void unpack_tau_ox2(GridS *pG);
+static void unpack_tau_ix3(GridS *pG);
+static void unpack_tau_ox3(GridS *pG);
+#endif /* MPI_PARALLEL */
+
+static void boundCondOptDepthLike_ix1(GridS *pG);
+static void boundCondOptDepthLike_ox1(GridS *pG);
+static void boundCondOptDepthLike_ix2(GridS *pG);
+static void boundCondOptDepthLike_ox2(GridS *pG);
+static void boundCondOptDepthLike_ix3(GridS *pG);
+static void boundCondOptDepthLike_ox3(GridS *pG);
+ 
+
+void bvals_tau_init(MeshS *pM){
+
+ GridS *pG;
+ DomainS *pD;
+ int l,m,n,nx1t,nx2t,nx3t,size;
+ int x1cnt=0, x2cnt=0, x3cnt=0; /* Number of words passed in x1/x2/x3-dir. */
+ 
+/* Figure out largest size needed for send/receive buffers with MPI ----------*/ 
+
+ if (pM->NLevels > 1) ath_error("[bval_rray_init]: xray module does not support SMR\n");
+
+#ifdef MPI_PARALLEL
+
+ pD = &(pM->Domain[0][0]);  /* ptr to Domain */
+ pG = pD->Grid; /* ptr to Grid */
+ 
+    for (n=0; n<(pD->NGrid[2]); n++){
+      for (m=0; m<(pD->NGrid[1]); m++){
+	for (l=0; l<(pD->NGrid[0]); l++){
+/* x1cnt is surface area of x1 faces */
+	if(pD->NGrid[0] > 1){
+	  nx2t = pD->GData[n][m][l].Nx[1];
+	  if(nx2t > 1) nx2t += 1;
+
+	  nx3t = pD->GData[n][m][l].Nx[2];
+	  if(nx3t > 1) nx3t += 1;
+          if(nx2t*nx3t > x1cnt) x1cnt = nx2t*nx3t;
+	}
+	
+/* x2cnt is surface area of x2 faces */
+	if(pD->NGrid[1] > 1){
+	  nx1t = pD->GData[n][m][l].Nx[0];
+	  if(nx1t > 1) nx1t += 2*nghost;
+	  
+	  nx3t = pD->GData[n][m][l].Nx[2];
+	  if(nx3t > 1) nx3t += 1;
+          if(nx1t*nx3t > x2cnt) x2cnt = nx1t*nx3t;
+	}
+
+/* x3cnt is surface area of x3 faces */
+	if(pD->NGrid[2] > 1){
+	  nx1t = pD->GData[n][m][l].Nx[0];
+	  if(nx1t > 1) nx1t += 2*nghost;
+
+	  nx2t = pD->GData[n][m][l].Nx[1];
+	  if(nx2t > 1) nx2t += 2*nghost;
+          if(nx1t*nx2t > x3cnt) x3cnt = nx1t*nx2t;
+	}
+	}
+      }
+    }
+    size = x1cnt > x2cnt ? x1cnt : x2cnt;
+    size = x3cnt >  size ? x3cnt : size;
+
+    size *= nghost; /* Multiply by the third dimension */
+    if (size > 0) {
+    if((send_buf = (double**)calloc_2d_array(2,size,sizeof(double))) == NULL)
+      ath_error("[bvals_init]: Failed to allocate send buffer\n");
+
+    if((recv_buf = (double**)calloc_2d_array(2,size,sizeof(double))) == NULL)
+      ath_error("[bvals_init]: Failed to allocate recv buffer\n");
+  }
+
+  if((recv_rq = (MPI_Request*) calloc_1d_array(2,sizeof(MPI_Request))) == NULL)
+    ath_error("[bvals_init]: Failed to allocate recv MPI_Request array\n");
+  if((send_rq = (MPI_Request*) calloc_1d_array(2,sizeof(MPI_Request))) == NULL)
+    ath_error("[bvals_init]: Failed to allocate send MPI_Request array\n");
+
+ #endif /* MPI_PARALLEL */
+
+  if(pG->Nx[0] > 1) {
+    if(apply_ix1 == NULL){
+      apply_ix1 = boundCondOptDepthLike_ix1;      
+    }
+    else {
+      ath_perr(-1,"[bvals_xray_init: ix1] error \n");      
+      exit(EXIT_FAILURE);
+    }
+    if(apply_ox1 == NULL){
+      apply_ox1 = boundCondOptDepthLike_ox1;      
+    }
+    else {
+      ath_perr(-1,"[bvals_xray_init: ox1] error \n");      
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if(pG->Nx[1] > 1) {
+    if(apply_ix2 == NULL){
+      apply_ix2 = boundCondOptDepthLike_ix2;      
+    }
+    else {
+      ath_perr(-1,"[bvals_xray_init: ix2] error \n");      
+      exit(EXIT_FAILURE);
+    }
+    if(apply_ox2 == NULL){
+      apply_ox2 = boundCondOptDepthLike_ox2;      
+    }
+    else {
+      ath_perr(-1,"[bvals_xray_init: ox2] error \n");      
+      exit(EXIT_FAILURE);
+    }
+  }
+ 
+  if(pG->Nx[2] > 1) {
+    if(apply_ix3 == NULL){
+      apply_ix3 = boundCondOptDepthLike_ix3;      
+    }
+    else {
+      ath_perr(-1,"[bvals_xray_init: ix3] error \n");      
+      exit(EXIT_FAILURE);
+    }
+    if(apply_ox3 == NULL){
+      apply_ox3 = boundCondOptDepthLike_ox3;      
+    }
+    else {
+      ath_perr(-1,"[bvals_xray_init: ox3] error \n");      
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  return;
+}
+
+
+
+void bvals_tau(DomainS *pD)
+{
+  GridS *pGrid = (pD->Grid);
+
+  
+#ifdef MPI_PARALLEL
+  //  int cnt1, cnt2, cnt3, cnt, ierr, ;
+  int cnt,ierr,mIndex;
+#endif /* MPI_PARALLEL */
+
+/*--- Step 1. ------------------------------------------------------------------
+ * Boundary Conditions in x1-direction */
+
+
+int  mpi1=1;
+
+/* #ifdef DBG_PARALLEL */
+/*  while( mpi1==0 ) */
+/* 	 ; */
+/* #endif  */
+
+  
+  if (pGrid->Nx[0] > 1){
+
+
+    #ifdef MPI_PARALLEL
+
+    cnt = nghost*(pGrid->Nx[1])*(pGrid->Nx[2]);
+
+/* MPI blocks to both left and right */
+    if (pGrid->rx1_id >= 0 && pGrid->lx1_id >= 0) {
+
+      /* Post non-blocking receives for data from L and R Grids */
+      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_id,LtoR_tag,
+        pD->Comm_Domain, &(recv_rq[0]));
+      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx1_id,RtoL_tag,
+        pD->Comm_Domain, &(recv_rq[1]));
+
+      /* pack and send data L and R */
+      pack_tau_ix1(pGrid);
+      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_id,RtoL_tag,
+        pD->Comm_Domain, &(send_rq[0]));
+
+      pack_tau_ox1(pGrid);
+      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx1_id,LtoR_tag,
+        pD->Comm_Domain, &(send_rq[1]));
+
+      /* check non-blocking sends have completed. */
+      ierr = MPI_Waitall(2, send_rq, MPI_STATUS_IGNORE);
+
+      /* check non-blocking receives and unpack data in any order. */
+      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
+      if (mIndex == 0) unpack_tau_ix1(pGrid);
+      if (mIndex == 1) unpack_tau_ox1(pGrid);
+      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
+      if (mIndex == 0) unpack_tau_ix1(pGrid);
+      if (mIndex == 1) unpack_tau_ox1(pGrid);
+
+    }
+
+/* Physical boundary on left, MPI block on right */
+    if (pGrid->rx1_id >= 0 && pGrid->lx1_id < 0) {
+
+      /* Post non-blocking receive for data from R Grid */
+      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx1_id,RtoL_tag,
+        pD->Comm_Domain, &(recv_rq[1]));
+ 
+      /* pack and send data R */
+      pack_tau_ox1(pGrid);
+      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx1_id,LtoR_tag,
+        pD->Comm_Domain, &(send_rq[1]));
+
+      /* set physical boundary */
+      (*apply_ix1)(pGrid);
+
+      /* check non-blocking send has completed. */
+      ierr = MPI_Wait(&(send_rq[1]), MPI_STATUS_IGNORE);
+
+      /* wait on non-blocking receive from R and unpack data */
+      ierr = MPI_Wait(&(recv_rq[1]), MPI_STATUS_IGNORE);
+      unpack_tau_ox1(pGrid);
+
+    }
+
+/* MPI block on left, Physical boundary on right */
+    if (pGrid->rx1_id < 0 && pGrid->lx1_id >= 0) {
+
+      /* Post non-blocking receive for data from L grid */
+      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_id,LtoR_tag,
+        pD->Comm_Domain, &(recv_rq[0]));
+
+      /* pack and send data L */
+      pack_tau_ix1(pGrid);
+      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_id,RtoL_tag,
+        pD->Comm_Domain, &(send_rq[0]));
+
+      /* set physical boundary */
+      (*apply_ox1)(pGrid);
+
+      /* check non-blocking send has completed. */
+      ierr = MPI_Wait(&(send_rq[0]), MPI_STATUS_IGNORE);
+
+      /* wait on non-blocking receive from L and unpack data */
+      ierr = MPI_Wait(&(recv_rq[0]), MPI_STATUS_IGNORE);
+      unpack_tau_ix1(pGrid);
+
+    }
+#endif /* MPI_PARALLEL */
+
+/* Physical boundaries on both left and right */
+    if (pGrid->rx1_id < 0 && pGrid->lx1_id < 0) {
+      (*apply_ix1)(pGrid);
+      (*apply_ox1)(pGrid);
+
+    }
+
+  }
+
+
+/*--- Step 2. -----Boundary Conditions in x2-direction */
+
+  if( pGrid->Nx[1] > 1 ) {
+
+#ifdef MPI_PARALLEL
+
+    cnt = (pGrid->Nx[0] + 2*nghost)*nghost*(pGrid->Nx[2]);
+
+/* MPI blocks to both left and right */
+    if (pGrid->rx2_id >= 0 && pGrid->lx2_id >= 0) {
+
+      /* Post non-blocking receives for data from L and R Grids */
+      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx2_id,LtoR_tag,
+	     pD->Comm_Domain, &(recv_rq[0]));
+      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx2_id,RtoL_tag,
+	     pD->Comm_Domain, &(recv_rq[1]));
+
+      /* pack and send data L and R */
+      pack_tau_ix2(pGrid);
+      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx2_id,RtoL_tag,
+        pD->Comm_Domain, &(send_rq[0]));
+
+      pack_tau_ox2(pGrid);
+      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx2_id,LtoR_tag,
+        pD->Comm_Domain, &(send_rq[1]));
+
+      /* check non-blocking sends have completed. */
+      ierr = MPI_Waitall(2, send_rq, MPI_STATUS_IGNORE);
+
+      /* check non-blocking receives and unpack data in any order. */
+      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
+      if (mIndex == 0) unpack_tau_ix2(pGrid);
+      if (mIndex == 1) unpack_tau_ox2(pGrid);
+      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
+      if (mIndex == 0) unpack_tau_ix2(pGrid);
+      if (mIndex == 1) unpack_tau_ox2(pGrid);
+    }
+
+/* Physical boundary on left, MPI block on right */
+    if (pGrid->rx2_id >= 0 && pGrid->lx2_id < 0) {
+
+      /* Post non-blocking receive for data from R Grid */
+      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx2_id,RtoL_tag,
+        pD->Comm_Domain, &(recv_rq[1]));
+
+      /* pack and send data R */
+      pack_tau_ox2(pGrid);
+      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx2_id,LtoR_tag,
+        pD->Comm_Domain, &(send_rq[1]));
+
+      /* set physical boundary */
+      (*apply_ix2)(pGrid);
+
+      /* check non-blocking send has completed. */
+      ierr = MPI_Wait(&(send_rq[1]), MPI_STATUS_IGNORE);
+
+      /* wait on non-blocking receive from R and unpack data */
+      ierr = MPI_Wait(&(recv_rq[1]), MPI_STATUS_IGNORE);
+      unpack_tau_ox2(pGrid);
+
+    }
+
+/* MPI block on left, Physical boundary on right */
+    if (pGrid->rx2_id < 0 && pGrid->lx2_id >= 0) {
+
+      /* Post non-blocking receive for data from L grid */
+      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx2_id,LtoR_tag,
+        pD->Comm_Domain, &(recv_rq[0]));
+
+      /* pack and send data L */
+      pack_tau_ix2(pGrid);
+      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx2_id,RtoL_tag,
+        pD->Comm_Domain, &(send_rq[0]));
+
+      /* set physical boundary */
+      (*apply_ox2)(pGrid);
+
+      /* check non-blocking send has completed. */
+      ierr = MPI_Wait(&(send_rq[0]), MPI_STATUS_IGNORE);
+
+      /* wait on non-blocking receive from L and unpack data */
+      ierr = MPI_Wait(&(recv_rq[0]), MPI_STATUS_IGNORE);
+      unpack_tau_ix2(pGrid);
+
+    }
+#endif /* MPI_PARALLEL */
+
+/* Physical boundaries on both left and right */
+    if (pGrid->rx2_id < 0 && pGrid->lx2_id < 0) {
+      (*apply_ix2)(pGrid);
+      (*apply_ox2)(pGrid);
+    }
+
+/* shearing sheet BCs; function defined in problem generator */
+#ifdef SHEARING_BOX
+    get_myGridIndex(pD, myID_Comm_world, &myL, &myM, &myN);
+    if (myL == 0) {
+      ShearingSheet_grav_ix1(pD);
+    }
+    if (myL == (pD->NGrid[0]-1)) {
+      ShearingSheet_grav_ox1(pD);
+    }
+#endif
+
+  }
+
+/*--- Step 3. ------------------------------------------------------------------
+ * Boundary Conditions in x3-direction */
+
+  if ( pGrid->Nx[2] > 1){
+
+#ifdef MPI_PARALLEL
+
+    cnt = (pGrid->Nx[0] + 2*nghost)*(pGrid->Nx[1] + 2*nghost)*nghost;
+
+/* MPI blocks to both left and right */
+    if (pGrid->rx3_id >= 0 && pGrid->lx3_id >= 0) {
+
+      /* Post non-blocking receives for data from L and R Grids */
+      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx3_id,LtoR_tag,
+        pD->Comm_Domain, &(recv_rq[0]));
+      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx3_id,RtoL_tag,
+        pD->Comm_Domain, &(recv_rq[1]));
+
+      /* pack and send data L and R */
+      pack_tau_ix3(pGrid);
+      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx3_id,RtoL_tag,
+        pD->Comm_Domain, &(send_rq[0]));
+
+      pack_tau_ox3(pGrid);
+      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx3_id,LtoR_tag,
+        pD->Comm_Domain, &(send_rq[1]));
+
+      /* check non-blocking sends have completed. */
+      ierr = MPI_Waitall(2, send_rq, MPI_STATUS_IGNORE);
+
+      /* check non-blocking receives and unpack data in any order. */
+      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
+      if (mIndex == 0) unpack_tau_ix3(pGrid);
+      if (mIndex == 1) unpack_tau_ox3(pGrid);
+      ierr = MPI_Waitany(2,recv_rq,&mIndex,MPI_STATUS_IGNORE);
+      if (mIndex == 0) unpack_tau_ix3(pGrid);
+      if (mIndex == 1) unpack_tau_ox3(pGrid);
+
+    }
+
+/* Physical boundary on left, MPI block on right */
+    if (pGrid->rx3_id >= 0 && pGrid->lx3_id < 0) {
+
+      /* Post non-blocking receive for data from R Grid */
+      ierr = MPI_Irecv(&(recv_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx3_id,RtoL_tag,
+        pD->Comm_Domain, &(recv_rq[1]));
+
+      /* pack and send data R */
+      pack_tau_ox3(pGrid);
+      ierr = MPI_Isend(&(send_buf[1][0]),cnt,MPI_DOUBLE,pGrid->rx3_id,LtoR_tag,
+        pD->Comm_Domain, &(send_rq[1]));
+
+      /* set physical boundary */
+      (*apply_ix3)(pGrid);
+
+      /* check non-blocking send has completed. */
+      ierr = MPI_Wait(&(send_rq[1]), MPI_STATUS_IGNORE);
+
+      /* wait on non-blocking receive from R and unpack data */
+      ierr = MPI_Wait(&(recv_rq[1]), MPI_STATUS_IGNORE);
+      unpack_tau_ox3(pGrid);
+
+    }
+
+/* MPI block on left, Physical boundary on right */
+    if (pGrid->rx3_id < 0 && pGrid->lx3_id >= 0) {
+
+      /* Post non-blocking receive for data from L grid */
+      ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx3_id,LtoR_tag,
+        pD->Comm_Domain, &(recv_rq[0]));
+
+      /* pack and send data L */
+      pack_tau_ix3(pGrid);
+      ierr = MPI_Isend(&(send_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx3_id,RtoL_tag,
+        pD->Comm_Domain, &(send_rq[0]));
+
+      /* set physical boundary */
+      (*apply_ox3)(pGrid);
+
+      /* check non-blocking send has completed. */
+      ierr = MPI_Wait(&(send_rq[0]), MPI_STATUS_IGNORE);
+
+      /* wait on non-blocking receive from L and unpack data */
+      ierr = MPI_Wait(&(recv_rq[0]), MPI_STATUS_IGNORE);
+      unpack_tau_ix3(pGrid);
+    }
+#endif /* MPI_PARALLEL */
+
+/* Physical boundaries on both left and right */
+    if (pGrid->rx3_id < 0 && pGrid->lx3_id < 0) {
+      (*apply_ix3)(pGrid);
+      (*apply_ox3)(pGrid);
+    }
+
+  }
+
+  return;
+}
+
+
+#ifdef MPI_PARALLEL  
+
+/*! \fn static void pack_tau_ix1(GridS *pG)
+ *  \brief PACK boundary conditions for MPI_Isend, Inner x1 boundary */
+
+static void pack_tau_ix1(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pSnd;
+  pSnd = (double*)&(send_buf[0][0]);
+
+/* Pack only tau into send buffer */
+  for (k=ks; k<=ke; k++){
+    for (j=js; j<=je; j++){
+      for (i=is; i<=is+(nghost-1); i++){
+        *(pSnd++) = pG->tau_e[k][j][i];
+      }
+    }
+  }
+
+  return;
+}
+/*----------------------------------------------------------------------------*/
+/*! \fn static void pack_tau_ox1(GridS *pG)
+ *  \brief PACK boundary conditions for MPI_Isend, Outer x1 boundary */
+
+static void pack_tau_ox1(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pSnd;
+  pSnd = (double*)&(send_buf[1][0]);
+
+/* Pack only tau into send buffer */
+  for (k=ks; k<=ke; k++){
+    for (j=js; j<=je; j++){
+      for (i=ie-(nghost-1); i<=ie; i++){
+        *(pSnd++) = pG->tau_e[k][j][i];
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void pack_tau_ix2(GridS *pG)
+ *  \brief PACK boundary conditions for MPI_Isend, Inner x2 boundary */
+
+static void pack_tau_ix2(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pSnd;
+  pSnd = (double*)&(send_buf[0][0]);
+
+/* Pack only tau into send buffer */
+  for (k=ks; k<=ke; k++){
+    for (j=js; j<=js+(nghost-1); j++){
+      for (i=is-nghost; i<=ie+nghost; i++){
+        *(pSnd++) = pG->tau_e[k][j][i];
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void pack_tau_ox2(GridS *pG)
+ *  \brief PACK boundary conditions for MPI_Isend, Outer x2 boundary */
+
+static void pack_tau_ox2(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pSnd;
+  pSnd = (double*)&(send_buf[1][0]);
+
+/* Pack only tau into send buffer */
+
+  for (k=ks; k<=ke; k++){
+    for (j=je-(nghost-1); j<=je; j++){
+      for (i=is-nghost; i<=ie+nghost; i++){
+        *(pSnd++) = pG->tau_e[k][j][i];
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void pack_tau_ix3(GridS *pG)
+ *  \brief PACK boundary conditions for MPI_Isend, Inner x3 boundary */
+
+static void pack_tau_ix3(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pSnd;
+  pSnd = (double*)&(send_buf[0][0]);
+
+/* Pack only tau into send buffer */
+
+  for (k=ks; k<=ks+(nghost-1); k++){
+    for (j=js-nghost; j<=je+nghost; j++){
+      for (i=is-nghost; i<=ie+nghost; i++){
+        *(pSnd++) = pG->tau_e[k][j][i];
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void pack_tau_ox3(GridS *pG)
+ *  \brief PACK boundary conditions for MPI_Isend, Outer x3 boundary */
+
+static void pack_tau_ox3(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pSnd;
+  pSnd = (double*)&(send_buf[1][0]);
+
+/* Pack only tau into send buffer */
+
+  for (k=ke-(nghost-1); k<=ke; k++){
+    for (j=js-nghost; j<=je+nghost; j++){
+      for (i=is-nghost; i<=ie+nghost; i++){
+        *(pSnd++) = pG->tau_e[k][j][i];
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void unpack_tau_ix1(GridS *pG)
+ *  \brief UNPACK boundary conditions after MPI_Irecv, Inner x1 boundary */
+
+static void unpack_tau_ix1(GridS *pG)
+{
+  int is = pG->is;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pRcv; 
+  pRcv = (double*)&(recv_buf[0][0]);
+
+/* Manually unpack the data from the receive buffer */
+
+  for (k=ks; k<=ke; k++){
+//    for (j=js; j<=js; j++){
+//MODIFIED BY HAO GONG
+    for (j=js; j<=je; j++){
+      for (i=is-nghost; i<=is-1; i++){
+        pG->tau_e[k][j][i] = *(pRcv++);
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void unpack_tau_ox1(GridS *pG)
+ *  \brief UNPACK boundary conditions after MPI_Irecv, Outer x1 boundary */
+
+static void unpack_tau_ox1(GridS *pG)
+{
+  int ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pRcv;
+  pRcv = (double*)&(recv_buf[1][0]);
+
+/* Manually unpack the data from the receive buffer */
+
+  for (k=ks; k<=ke; k++){
+    for (j=js; j<=je; j++){
+      for (i=ie+1; i<=ie+nghost; i++){
+        pG->tau_e[k][j][i] = *(pRcv++);
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void unpack_tau_ix2(GridS *pG)
+ *  \brief UNPACK boundary conditions after MPI_Irecv, Inner x2 boundary */
+
+static void unpack_tau_ix2(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pRcv;
+  pRcv = (double*)&(recv_buf[0][0]);
+
+/* Manually unpack the data from the receive buffer */
+
+  for (k=ks; k<=ke; k++){
+    for (j=js-nghost; j<=js-1; j++){
+      for (i=is-nghost; i<=ie+nghost; i++){
+        pG->tau_e[k][j][i] = *(pRcv++);
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void unpack_tau_ox2(GridS *pG)
+ *  \brief UNPACK boundary conditions after MPI_Irecv, Outer x2 boundary */
+
+static void unpack_tau_ox2(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int je = pG->je;
+  int ks = pG->ks, ke = pG->ke;
+  int i,j,k;
+  double *pRcv;
+  pRcv = (double*)&(recv_buf[1][0]);
+
+/* Manually unpack the data from the receive buffer */
+
+  for (k=ks; k<=ke; k++){
+    for (j=je+1; j<=je+nghost; j++){
+      for (i=is-nghost; i<=ie+nghost; i++){
+        pG->tau_e[k][j][i] = *(pRcv++);
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void unpack_tau_ix3(GridS *pG)
+ *  \brief UNPACK boundary conditions after MPI_Irecv, Inner x3 boundary */
+
+static void unpack_tau_ix3(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ks = pG->ks;
+  int i,j,k;
+  double *pRcv;
+  pRcv = (double*)&(recv_buf[0][0]);
+
+/* Manually unpack the data from the receive buffer */
+
+  for (k=ks-nghost; k<=ks-1; k++){
+    for (j=js-nghost; j<=je+nghost; j++){
+      for (i=is-nghost; i<=ie+nghost; i++){
+        pG->tau_e[k][j][i] = *(pRcv++);
+      }
+    }
+  }
+
+  return;
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \fn static void unpack_tau_ox3(GridS *pG)
+ *  \brief UNPACK boundary conditions after MPI_Irecv, Outer x3 boundary */
+
+static void unpack_tau_ox3(GridS *pG)
+{
+  int is = pG->is, ie = pG->ie;
+  int js = pG->js, je = pG->je;
+  int ke = pG->ke;
+  int i,j,k;
+  double *pRcv;
+  pRcv = (double*)&(recv_buf[1][0]);
+
+/* Manually unpack the data from the receive buffer */
+
+  for (k=ke+1; k<=ke+nghost; k++){
+    for (j=js-nghost; j<=je+nghost; j++){
+      for (i=is-nghost; i<=ie+nghost; i++){
+        pG->tau_e[k][j][i] = *(pRcv++);
+      }
+    }
+  }
+
+  return;
+}
+#endif /* MPI_PARALLEL */
+static void boundCondOptDepthLike_ix1(GridS *pGrid)
+{
+  int is = pGrid->is, ie = pGrid->ie;
+  int js = pGrid->js, je = pGrid->je;
+  int ks = pGrid->ks, ke = pGrid->ke;
+  int i,j,k;
+/* #ifdef RADIAL_RAY_TEST */
+/*   Real x1,x2,x3, rsph; */
+/* #endif  */
+  
+  for (k=ks; k<=ke; k++) {
+    for (j=js; j<=je; j++) {
+      for (i=1; i<=nghost; i++) {   //original
+      /* for (i = is; i<=ie; i++) { //r */
+	
+	//	pGrid->tau_e[k][j][is-i] = 0.;
+
+
+	
+/* #ifdef RADIAL_RAY_TEST	 	  */
+/* 	cc_pos(pGrid,i,j,k,&x1,&x2,&x3); */
+/* 	rsph =  sqrt(pow(x1 - rRadSrc[0], 2) + pow(x3 - rRadSrc[1] ,2));	 */
+/* 	pGrid->disp[k][j][is-i] = rsph;	 */
+/* #endif */
+	
+	pGrid->tau_e[k][j][is-i] = pGrid->tau_e[k][j][is+(i-1)];
+
+	//	pGrid->tau_e[k][j][is-i] = 0.;
+	  
+      }
+    }
+  }
+
+  return; 
+}
+static void boundCondOptDepthLike_ox1(GridS *pGrid)
+{
+  int ie = pGrid->ie;
+  int js = pGrid->js, je = pGrid->je;
+  int ks = pGrid->ks, ke = pGrid->ke;
+  int i,j,k;
+
+  for (k=ks; k<=ke; k++) {
+    for (j=js; j<=je; j++) {
+      for (i=1; i<=nghost; i++) {
+        pGrid->tau_e[k][j][ie+i] = pGrid->tau_e[k][j][ie-(i-1)];
+      }
+    }
+  }
+
+  return;
+
+}
+
+static void boundCondOptDepthLike_ix2(GridS *pGrid)
+{
+  int is = pGrid->is, ie = pGrid->ie;
+  int js = pGrid->js;
+  int ks = pGrid->ks, ke = pGrid->ke;
+  int i,j,k;
+
+  for (k=ks; k<=ke; k++) {
+    for (j=1; j<=nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->tau_e[k][js-j][i]    =  pGrid->tau_e[k][js+(j-1)][i];
+      }
+    }
+  }
+
+  return;
+}
+static void boundCondOptDepthLike_ox2(GridS *pGrid)
+{
+   int is = pGrid->is, ie = pGrid->ie;
+  int je = pGrid->je;
+  int ks = pGrid->ks, ke = pGrid->ke;
+  int i,j,k;
+
+  for (k=ks; k<=ke; k++) {
+    for (j=1; j<=nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->tau_e[k][je+j][i] = pGrid->tau_e[k][je-(j-1)][i];
+      }
+    }
+  }
+
+  return;
+}
+
+
+static void boundCondOptDepthLike_ix3(GridS *pGrid)
+{
+  int is = pGrid->is, ie = pGrid->ie;
+  int js = pGrid->js, je = pGrid->je;
+  int ks = pGrid->ks;
+  int i,j,k;
+
+  for (k=1; k<=nghost; k++) {
+    for (j=js-nghost; j<=je+nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->tau_e[ks-k][j][i] = pGrid->tau_e[ks+(k-1)][j][i];
+      }
+    }
+  }
+
+  return;
+}
+static void boundCondOptDepthLike_ox3(GridS *pGrid)
+{
+   int is = pGrid->is, ie = pGrid->ie;
+  int js = pGrid->js, je = pGrid->je;
+  int ke = pGrid->ke;
+  int i,j,k;
+
+  for (k=1; k<=nghost; k++) {
+    for (j=js-nghost; j<=je+nghost; j++) {
+      for (i=is-nghost; i<=ie+nghost; i++) {
+        pGrid->tau_e[ke+k][j][i] = pGrid->tau_e[ke-(k-1)][j][i];
+      }
+    }
+  }
+
+  return;
+}
+
+
+/* ============================================================================= */
+/*                      end of boundary conditions */
+/* ============================================================================= */
+
+
