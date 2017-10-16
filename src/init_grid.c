@@ -215,26 +215,26 @@ void init_grid(MeshS *pM)
       pG->disp = (Real***)calloc_3d_array(n3z, n2z, n1z, sizeof(Real));
       if (pG->disp == NULL) goto on_error_xrays_disp;
 
-      pG->GridOfRays = (RayData***)calloc_3d_array(n3z, n2z, n1z, sizeof(RayData));
-      if (pG->GridOfRays == NULL) goto on_error_xrays_GridOfRays;
-
       pG->yglob = (ArrayGlob***)calloc_3d_array(pM->Nx[2], pM->Nx[1], pM->Nx[0], sizeof(ArrayGlob));
       if (pG->yglob == NULL) goto on_error_xrays_yglob;
 
-//      (pG->GridOfRays->Ray)[0][0][0] = (Real*)calloc_1d_array(n3z, sizeof(Real));
+      pG->GridOfRays = (RayData***)calloc_3d_array(pM->Nx[2],pM->Nx[1],pM->Nx[0],sizeof(RayData));
+      if (pG->GridOfRays == NULL) goto on_error_xrays_GridOfRays;
 
+      
+/* #ifdef MPI_PARALLEL */
+/*       /\* printf(" ++++++++++++++ %d %d %d \n\n", pM->Nx[2], pM->Nx[1], pM->Nx[0]); *\/ */
+/*       pG->yglob = (ArrayGlob***)calloc_3d_array(pM->Nx[2], pM->Nx[1], pM->Nx[0], sizeof(ArrayGlob)); */
+/*       if (pG->yglob == NULL) goto on_error_xrays_yglob; */
 
-//      (pG->GridOfRays[0][0][0]).Ray[0].dl = 1;
-
-
-//      if ((pG->GridOfRays[0][0][0]).Ray == NULL) goto on_error_xrays_Ray;
-
-
-
-
-
-
-
+/*       pG->GridOfRays = (RayData***)calloc_3d_array(pM->Nx[2],pM->Nx[1],pM->Nx[0],sizeof(RayData)); */
+/*       if (pG->GridOfRays == NULL) goto on_error_xrays_GridOfRays; */
+      
+/* #else */
+/*       pG->GridOfRays = (RayData***)calloc_3d_array(n3z, n2z, n1z, sizeof(RayData)); */
+/*       if (pG->GridOfRays == NULL) goto on_error_xrays_GridOfRays; */
+/* #endif */
+      
 #endif /* XRAYS */
 
 /* Build 3D arrays to gravitational potential and mass fluxes */
@@ -1176,16 +1176,16 @@ G3.ijkl[2],G3.ijkr[2]);
 		free_3d_array(pG->xi);
     on_error_xrays_tau_e:
 		free_3d_array(pG->tau_e);
-
     on_error_xrays_GridOfRays:
-		free_3d_array(pG->GridOfRays);
-
+                free_3d_array(pG->GridOfRays);		
     on_error_xrays_disp:
 		free_3d_array(pG->disp);
-    on_error_xrays_yglob:		
-	      free_3d_array(pG->yglob);
 
+    on_error_xrays_yglob:
 
+		free_3d_array(pG->yglob);
+
+		
 #endif
 }
 

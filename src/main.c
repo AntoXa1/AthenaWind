@@ -447,8 +447,9 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef XRAYS   
- 
-  bvals_tau_init(&Mesh);
+
+  //  no need when using global arrays
+  // bvals_tau_init(&Mesh);
 
 #endif
   

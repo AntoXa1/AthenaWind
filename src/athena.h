@@ -290,6 +290,7 @@ typedef struct RayData{
 typedef struct ArrayGlob{
   /* array on global mesh updated on a local node */
   Real ro;
+  Real tau;
 }ArrayGlob;
   
 
@@ -372,8 +373,14 @@ typedef struct Grid_s{
   Real ***xi ;	   // ionization parameter
   Real ***tau_e; //optical depth
   Real ***disp; //displacement
-  RayData ***GridOfRays;
-  ArrayGlob ***yglob; //density on the global mesh
+
+ArrayGlob ***yglob; //density on the global mesh
+
+
+RayData ***GridOfRays;
+
+  
+  
 #endif // XRAYS
   
 }GridS;
@@ -563,7 +570,11 @@ typedef Real (*ShearFun_t)(const Real x1);
  *  \brief Cooling function. */
 
 #ifdef XRAYS
-	typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt, Real realParam, int intParam);
+typedef Real (*CoolingFun_t)(const Real E, const Real d,
+			     const Real M1,const Real M2, const Real M3,
+			     const Real B1,const Real B2,const Real B3,
+			     const Real xi, const Real dt,
+			     int i, int j, int k);
 #else
 	typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt);
 #endif

@@ -3226,6 +3226,7 @@ static void boundCondOptDepthLike_ix3(GridS *pG);
 static void boundCondOptDepthLike_ox3(GridS *pG);
  
 
+#ifdef XRAYS
 void bvals_tau_init(MeshS *pM){
 
  GridS *pG;
@@ -3987,7 +3988,10 @@ static void unpack_tau_ox3(GridS *pG)
 
   return;
 }
+#endif
 #endif /* MPI_PARALLEL */
+
+#ifdef XRAYS
 static void boundCondOptDepthLike_ix1(GridS *pGrid)
 {
   int is = pGrid->is, ie = pGrid->ie;
@@ -4113,7 +4117,7 @@ static void boundCondOptDepthLike_ox3(GridS *pGrid)
   return;
 }
 
-
+#endif // XRAYS
 /* ============================================================================= */
 /*                      end of boundary conditions */
 /* ============================================================================= */
