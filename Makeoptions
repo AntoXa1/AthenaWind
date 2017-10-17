@@ -33,7 +33,7 @@ ifeq (NO_FFT,FFT_ENABLED)
   FFTWINC = -I/usr/include
 endif
 
-ifeq (NO_MPI_PARALLEL,MPI_PARALLEL)
+ifeq (MPI_PARALLEL,MPI_PARALLEL)
   CC = /Users/dora/Library/OpenMPI/bin/mpicc
   LDR =/Users/dora/Library/OpenMPI/bin/mpicc
 endif
@@ -107,8 +107,8 @@ ifeq ($(MACHINE),macosx)
   LDR = gcc
   OPT = -O0 -g -w
 #  OPT = -O3
-  FFTWLIB = -L/opt/local/lib -lfftw3
-  FFTWINC = -I/opt/local/include
+  # FFTWLIB = -L/opt/local/lib -lfftw3
+  # FFTWINC = -I/opt/local/include
 else
   abort Unsupported MACHINE=$(MACHINE)
 endif
@@ -121,7 +121,7 @@ endif
 endif
 endif
 
-ifeq (NO_MPI_PARALLEL,NO_MPI_PARALLEL)
+ifeq (MPI_PARALLEL,NO_MPI_PARALLEL)
   MPIINC = 
   MPILIB = 
 endif

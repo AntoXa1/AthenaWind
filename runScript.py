@@ -109,3 +109,6 @@ if '2' in compLev:
 
 if '3' in compLev:
     subproc.check_call(['./athena', '-i', inputFile],  cwd = './bin' )
+
+
+    ./configure --with-coord=cylindrical --with-problem=torus9 --with-gas=mhd --with-flux=hlld --with-order=2p --enable-mpi --with-integrator=vl
