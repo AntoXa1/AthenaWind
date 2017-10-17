@@ -71,6 +71,13 @@ void bvals_mhd_init(MeshS *pM);
 void bvals_mhd_fun(DomainS *pD, enum BCDirection dir, VGFun_t prob_bc);
 void bvals_mhd(DomainS *pDomain);
 
+#ifdef XRAYS
+
+void bvals_tau_init(MeshS *pM);
+void bvals_tau(DomainS *pD);
+
+#endif
+
 /*----------------------------------------------------------------------------*/
 /* bvals_shear.c  */
 #ifdef SHEARING_BOX
@@ -113,13 +120,16 @@ void fc_pos(const GridS *pG, const int i, const int j,const int k,
 #ifdef CYLINDRICAL
 Real x1vc(const GridS *pG, const int i);
 #endif
+
 #ifdef PARTICLES
+
 int celli(const GridS *pG, const Real x, const Real dx1_1, int *i, Real *a);
 Real x1cc(const GridS *pG, const int i);
 int cellj(const GridS *pG, const Real y, const Real dx2_1, int *j, Real *b);
 Real x2cc(const GridS *pG, const int j);
 int cellk(const GridS *pG, const Real z, const Real dx3_1, int *k, Real *c);
 Real x3cc(const GridS *pG, const int k);
+
 #endif
 
 /*----------------------------------------------------------------------------*/
@@ -204,7 +214,7 @@ void par_dist_mpi(const int mytid, MPI_Comm comm);
 
 /*----------------------------------------------------------------------------*/
 /* prob/PROBLEM.c ; linked to problem.c */
-void problem(DomainS *pD);
+void problem(MeshS *pM, DomainS *pD);
 void Userwork_in_loop(MeshS *pM);
 void Userwork_after_loop(MeshS *pM);
 void problem_read_restart(MeshS *pM, FILE *fp);

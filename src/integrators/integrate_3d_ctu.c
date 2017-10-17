@@ -59,7 +59,7 @@
  static Cons1DS ***Ul_x2Face=NULL, ***Ur_x2Face=NULL;
  static Cons1DS ***Ul_x3Face=NULL, ***Ur_x3Face=NULL;
  Cons1DS ***x1Flux=NULL, ***x2Flux=NULL, ***x3Flux=NULL;
-
+ 
  /* The interface magnetic fields and emfs */
  #ifdef MHD
  static Real ***B1_x1Face=NULL, ***B2_x2Face=NULL, ***B3_x3Face=NULL;
@@ -89,30 +89,28 @@
  /* VARIABLES NEED FOR CYLINDRICAL COORDINATES */
  #ifdef CYLINDRICAL
  static Real ***geom_src=NULL;
- #endif
+
 
 
  //<< anton
-  static void checkNanArrOfPrim1DS(Prim1DS *W, int il, iu){
-	  int i;
-	  for (i=il-3; i<=iu+3; i++){
-
-		  if(  isnan(  W[i].d )  || isnan(W[i].P) || isnan(W[i].Vx) || isnan(W[i].Vy) || isnan(W[i].Vz)    ){
-
-		  	    printf( "isnan 1d::checkNanArrOfPrim1DS in 3d_ctu %d %e %e %e %e %e \n",
+static void checkNanArrOfPrim1DS(Prim1DS *W, int il, iu){
+int i;
+for (i=il-3; i<=iu+3; i++){
+  if( isnan( W[i].d ) || isnan(W[i].P) ||
+  isnan(W[i].Vx) || isnan(W[i].Vy) || isnan(W[i].Vz) ){
+  printf( "isnan 1d::checkNanArrOfPrim1DS in 3d_ctu %d %e %e %e %e %e \n",
 		  	    			i,
 						W[i].d,
 						W[i].P,
 						W[i].Vx,
 						W[i].Vy,
 						W[i].Vz	);
-	         	getchar();
-
-		  }
+    	getchar();
+	  }
 	  }
   }
   //>> anton
-
+ #endif
 
  /*==============================================================================
   * PRIVATE FUNCTION PROTOTYPES:
@@ -272,10 +270,12 @@
 
       lr_states(pG,W,Bxc,pG->dt,pG->dx1,il+1,iu-1,Wl,Wr,1);
 
+#ifdef CYLINDRICAL
 //<< anton
       checkNanArrOfPrim1DS(Wl,il,iu);
       checkNanArrOfPrim1DS(Wr,il,iu);
  //>> anton
+#endif
 
 
 
@@ -561,24 +561,24 @@
          fluxes(Ul_x1Face[k][j][i],Ur_x1Face[k][j][i],Wl[i],Wr[i],Bx,
            &x1Flux[k][j][i]);
 
-
+#ifdef CYLINDRICAL
 // <<anton
 checkNanArrOfPrim1DS(Wl,i,i);
 checkNanArrOfPrim1DS(Wr,i,i);
-  if(  isnan(x1Flux[k][j][i].d)  || isnan(x1Flux[k][j][i].E) || isnan(x1Flux[k][j][i].Mx) || isnan(x1Flux[k][j][i].My) || isnan(x1Flux[k][j][i].Mz) ){
 
-	  	    printf( "isnan 1d::fluxes 1 in 3d_ctu %d %d %d %e %e %e %e %e \n", i, j,k,  x1Flux[k][j][i].d,  x1Flux[k][j][i].E,
-	  	    		x1Flux[k][j][i].Mx,x1Flux[k][j][i].My,x1Flux[k][j][i].Mz);
+if(  isnan(x1Flux[k][j][i].d)  || isnan(x1Flux[k][j][i].E) || isnan(x1Flux[k][j][i].Mx) || isnan(x1Flux[k][j][i].My) || isnan(x1Flux[k][j][i].Mz) ){
 
 
-         	printf( "isnan 1d::fluxes 1 in 3d_ctu %d %d %d %e %e %e %e %e %e %e %e\n", i, j,k,
-         			Ul_x1Face[k][j][i].d , Ul_x1Face[k][j][i].E,
-         			Ul_x1Face[k][j][i].Mx, Ul_x1Face[k][j][i].My, Ul_x1Face[k][j][i].Mz,
-					Ul_x1Face[k][j][i].By, Ul_x1Face[k][j][i].Bz, Ul_x1Face[k][j][i].Pflux
-         	);
+printf( "isnan 1d::fluxes 1 in 3d_ctu %d %d %d %e %e %e %e %e \n", i, j,k,  x1Flux[k][j][i].d,  x1Flux[k][j][i].E,x1Flux[k][j][i].Mx,x1Flux[k][j][i].My,x1Flux[k][j][i].Mz);
 
-         	getchar();
-         }
+
+printf( "isnan 1d::fluxes 1 in 3d_ctu %d %d %d %e %e %e %e %e %e %e %e\n", i, j,k,
+Ul_x1Face[k][j][i].d , Ul_x1Face[k][j][i].E,Ul_x1Face[k][j][i].Mx, Ul_x1Face[k][j][i].My,
+Ul_x1Face[k][j][i].Mz,Ul_x1Face[k][j][i].By, Ul_x1Face[k][j][i].Bz, Ul_x1Face[k][j][i].Pflux);
+getchar();
+
+ }
+#endif 
 
 
        }
@@ -2508,7 +2508,8 @@ checkNanArrOfPrim1DS(Wr,i,i);
    integrate_emf3_corner(pG);
 
  /* Remap Ey at is and ie+1 to conserve Bz in shearing box */
- #ifdef SHEARING_BOX
+
+#ifdef SHEARING_BOX
      get_myGridIndex(pD, myID_Comm_world, &my_iproc, &my_jproc, &my_kproc);
 
  /* compute remapped Ey from opposite side of grid */

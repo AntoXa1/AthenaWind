@@ -242,6 +242,8 @@ typedef struct GPCouple_s{
 #endif /* PARTICLES */
 
 
+
+
 /*----------------------------------------------------------------------------*/
 /*! \struct GridOvrlpS
  *  \brief Contains information about Grid overlaps, used for SMR.
@@ -260,6 +262,42 @@ typedef struct GridOvrlp_s{
 #endif
 }GridOvrlpS;
 #endif /* STATIC_MESH_REFINEMENT */
+
+
+// anton
+
+#ifdef XRAYS
+
+typedef struct CellIndexAndCoords{
+//	cell data, used in ...
+	int i, j, k; //current index
+	Real x123[3]; //coordinates
+}CellIndexAndCoords;
+
+typedef struct CellOnRayData{
+//	cell data along the trajectory
+	int i, j, k; //current index of cell along the ray
+	Real dl; //length element
+}CellOnRayData;
+
+typedef struct RayData{
+//	data along the trajectory
+	short len;
+	CellOnRayData  *Ray;
+
+}RayData;
+
+typedef struct ArrayGlob{
+  /* array on global mesh updated on a local node */
+  Real ro;
+  Real tau;
+}ArrayGlob;
+  
+
+
+#endif //XRAYS
+
+
 
 /*----------------------------------------------------------------------------*/
 /*! \struct GridS
@@ -315,13 +353,14 @@ typedef struct Grid_s{
 #endif /* PARTICLES */
 
 #ifdef STATIC_MESH_REFINEMENT
+  
   int NCGrid;        /*!< # of child  Grids that overlap this Grid */
   int NPGrid;        /*!< # of parent Grids that this Grid overlaps */
   int NmyCGrid;      /*!< # of child  Grids on same processor as this Grid */
   int NmyPGrid;      /*!< # of parent Grids on same processor (either 0 or 1) */
-
   GridOvrlpS *CGrid;  /*!< 1D array of data for NCGrid child  overlap regions */
   GridOvrlpS *PGrid;  /*!< 1D array of data for NPGrid parent overlap regions */
+  
 /* NB: The first NmyCGrid[NmyPGrid] elements of these arrays contain overlap
  * regions being updated by the same processor as this Grid */
 #endif /* STATIC_MESH_REFINEMENT */
@@ -330,13 +369,20 @@ typedef struct Grid_s{
   Real *r,*ri;                  /*!< cylindrical scaling factors */ 
 #endif /* CYLINDRICAL */
 
-
 #ifdef XRAYS
-Real ***xi ;	   // ionization parameter
-Real ***tau_e; //optical depth
-Real ***Tm; //matter temperature
-#endif // XRAYS
+  Real ***xi ;	   // ionization parameter
+  Real ***tau_e; //optical depth
+  Real ***disp; //displacement
 
+ArrayGlob ***yglob; //density on the global mesh
+
+
+RayData ***GridOfRays;
+
+  
+  
+#endif // XRAYS
+  
 }GridS;
 
 
@@ -524,7 +570,11 @@ typedef Real (*ShearFun_t)(const Real x1);
  *  \brief Cooling function. */
 
 #ifdef XRAYS
-	typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt, Real realParam, int intParam);
+typedef Real (*CoolingFun_t)(const Real E, const Real d,
+			     const Real M1,const Real M2, const Real M3,
+			     const Real B1,const Real B2,const Real B3,
+			     const Real xi, const Real dt,
+			     int i, int j, int k);
 #else
 	typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt);
 #endif

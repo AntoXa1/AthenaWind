@@ -27,6 +27,8 @@
  * - integrate_init_3d() */
 /*============================================================================*/
 
+#define XCOOLING
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -103,7 +105,7 @@ static void ApplyCorr(GridS *pG, int i, int j, int k,
 
 #ifdef XRAYS
 
-//Real coolfl,coolfr,,Eh=0.0;
+//Real coolfl,coolfr,Eh=0.0;
 Real coolf, res;
 
 #endif
@@ -667,9 +669,24 @@ void integrate_3d_vl(DomainS *pD)
 #endif
 
 #ifdef XRAYS
-          coolf = (*CoolingFunc)(  Uhalf[k][j][i].d,   Gamma_1*Uhalf[k][j][i].E,   hdt,
-        		  pG->xi[k][j][i],  KEY_P);
-          Uhalf[k][j][i].E -= hdt*coolf;
+
+	  //printf(" xiin %e \n", &(pG->xi[k][j][i]));
+	  
+	  
+	  //coolf=0;
+
+#ifdef XCOOLING
+	  
+	  coolf = (*CoolingFunc)(Uhalf[k][j][i].E, Uhalf[k][j][i].d,
+				 Uhalf[k][j][i].M1, Uhalf[k][j][i].M2, Uhalf[k][j][i].M3,
+				 Uhalf[k][j][i].B1c, Uhalf[k][j][i].B2c, Uhalf[k][j][i].B3c,
+				 pG->xi[k][j][i], hdt, i, j, k );
+
+	  Uhalf[k][j][i].E -= hdt*coolf;
+#endif
+
+
+	  
 #endif
 
 
@@ -1476,15 +1493,22 @@ void integrate_3d_vl(DomainS *pD)
 #endif
 
 #ifdef XRAYS
-          coolf = (*CoolingFunc)(  Uhalf[k][j][i].d,   Gamma_1*Uhalf[k][j][i].E,   pG->dt,
-        		  pG->xi[k][j][i],  KEY_P);
 
-          res= Uhalf[k][j][i].E;
+	 	           
+#ifdef XCOOLING
+	  coolf = (*CoolingFunc)(pG->U[k][j][i].E, pG->U[k][j][i].d,
+				 pG->U[k][j][i].M1, pG->U[k][j][i].M2, pG->U[k][j][i].M3,
+				 pG->U[k][j][i].B1c, pG->U[k][j][i].B2c, pG->U[k][j][i].B3c,
+				 pG->xi[k][j][i], hdt, i, j, k );	  
+	  pG->U[k][j][i].E  -= pG->dt *coolf;
 
-          Uhalf[k][j][i].E -= pG->dt*coolf;
-          if (coolf > 0.){
-//        	  printf("%e %e %e\n",coolf, res, Uhalf[k][j][i].E);
-          }
+#endif	  
+	  
+	  
+          /* if (coolf > 0.){ */
+	  /*   /\* printf("cooling func %e %e %e\n",coolf, res, Uhalf[k][j][i].E); *\/ */
+          /* } */
+	  
 #endif
 
         }

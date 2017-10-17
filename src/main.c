@@ -12,7 +12,7 @@
  *  I. Parrish, & A. Skinner.  See also the F90 version developed by JF Hawley
  *  & JB Simon.
  *
- *  History:
+ *  History: 
  * - v1.0 [Feb 2003] - 1D adiabatic and isothermal MHD
  * - v1.1 [Sep 2003] - bug fixes in eigensystems
  * - v2.0 [Dec 2004] - 2D adiabatic and isothermal MHD
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
   VDFun_t SelfGrav;      /* function pointer to self-gravity, set at runtime */
 #endif
   int nl,nd;
-
+ 
   char *definput = "athinput";  /* default input filename */
   char *athinput = definput;
   int ires=0;             /* restart flag, set to 1 if -r argument on cmdline */
@@ -116,6 +116,8 @@ int main(int argc, char *argv[])
   struct timeval tvs, tve;
   Real dt_done;
 
+
+  
 #ifdef MPI_PARALLEL
   char *pc, *suffix, new_name[MAXLEN];
   int len, h, m, s, err, use_wtlim=0;
@@ -313,6 +315,9 @@ int main(int argc, char *argv[])
  * <log> block of the input file.  Otherwise, diagnositic output will go to
  * stdout and stderr streams. */
 
+
+
+
   if(par_geti_def("log","file_open",0)){
     iflush = par_geti_def("log","iflush",0);
     name = par_gets("job","problem_id");
@@ -329,12 +334,14 @@ int main(int argc, char *argv[])
 /* Set the ath_log output and error logging levels */
   out_level = par_geti_def("log","out_level",0);
   err_level = par_geti_def("log","err_level",0);
+  
 #ifdef MPI_PARALLEL
     if(myID_Comm_world > 0){   /* Children may use different log levels */
     out_level = par_geti_def("log","child_out_level",-1);
     err_level = par_geti_def("log","child_err_level",-1);
   }
 #endif /* MPI_PARALLEL */
+    
   ath_log_set_level(out_level, err_level);
 
   if(have_time > 0) /* current calendar time (UTC) is available */
@@ -342,6 +349,12 @@ int main(int argc, char *argv[])
 
 /*--- Step 4. ----------------------------------------------------------------*/
 /* Initialize nested mesh hierarchy. */
+
+  /* int rank, size; */
+  /*   MPI_Comm_rank (MPI_COMM_WORLD, &rank);	/\* get current process id *\/ */
+  /*   MPI_Comm_size (MPI_COMM_WORLD, &size);	/\* get number of processes *\/ */
+  /*   printf( "Step 4 from process %d of %d\n", rank, size ); */
+
 
   init_mesh(&Mesh);
 
@@ -381,7 +394,7 @@ int main(int argc, char *argv[])
   } else {                           /* New problem */
     for (nl=0; nl<(Mesh.NLevels); nl++){ 
       for (nd=0; nd<(Mesh.DomainsPerLevel[nl]); nd++){  
-        if (Mesh.Domain[nl][nd].Grid != NULL) problem(&(Mesh.Domain[nl][nd]));
+        if (Mesh.Domain[nl][nd].Grid != NULL) problem(&Mesh, &(Mesh.Domain[nl][nd]));
       }
     }
   }
@@ -433,6 +446,13 @@ int main(int argc, char *argv[])
   integrate_diff_init(&Mesh);
 #endif
 
+#ifdef XRAYS   
+
+  //  no need when using global arrays
+  // bvals_tau_init(&Mesh);
+
+#endif
+  
 /* For new runs, set initial timestep */
 
   if(ires == 0) new_dt(&Mesh);
@@ -469,7 +489,7 @@ int main(int argc, char *argv[])
   change_rundir(rundir); /* Change to run directory */
   ath_sig_init();        /* Install a signal handler */
   for (nl=1; nl<(Mesh.NLevels); nl++){
-    sprintf(level_dir,"lev%d",nl);
+    sprintf(level_dir,"Lev%d",nl);
     mkdir(level_dir, 0775); /* Create directories for levels > 0 */
   }
 
@@ -499,6 +519,9 @@ int main(int argc, char *argv[])
  *            (i) check for stopping criteria
  */
 
+
+
+  
   while (Mesh.time < tlim && (nlim < 0 || Mesh.nstep < nlim)) {
 
 /*--- Step 9a. ---------------------------------------------------------------*/
@@ -527,7 +550,8 @@ int main(int argc, char *argv[])
           if (Mesh.Domain[nl][nd].Grid != NULL){
 
             bvals_mhd(&(Mesh.Domain[nl][nd]));
-
+	    
+	    
           }
       }}
 #ifdef STATIC_MESH_REFINEMENT
@@ -569,7 +593,7 @@ int main(int argc, char *argv[])
 /* User work (defined in problem()) */
 
     Userwork_in_loop(&Mesh);
-
+        
 /*--- Step 9f. ---------------------------------------------------------------*/
 /* Compute gravitational potential using new density, and add second-order
  * correction to fluxes for accelerations due to self-gravity. */
@@ -826,6 +850,7 @@ void change_rundir(const char *name)
     ath_error("[change_rundir]: Cannot change directory to \"%s\"\n",name);
 
 #endif /* MPI_PARALLEL */
+
 
   return;
 }

@@ -104,6 +104,7 @@ void init_mesh(MeshS *pM)
 
 /* Start by initializing some quantaties in Mesh structure */
 
+
   pM->time = 0.0;
   pM->nstep = 0;
   pM->outfilename = par_gets("job","problem_id");
@@ -491,6 +492,8 @@ void init_mesh(MeshS *pM)
 #ifndef MPI_PARALLEL
       for (i=0; i<3; i++) pD->NGrid[i] = 1;
 #else
+
+
       nproc = par_geti_def(block,"AutoWithNProc",0);
 
 /* Read layout of Grids from input file */
@@ -499,6 +502,7 @@ void init_mesh(MeshS *pM)
         pD->NGrid[0] = par_geti_def(block,"NGrid_x1",1);
         pD->NGrid[1] = par_geti_def(block,"NGrid_x2",1);
         pD->NGrid[2] = par_geti_def(block,"NGrid_x3",1);
+
         if (pD->NGrid[0] == 0)
           ath_error("[init_mesh] Cannot enter NGrid_x1=0 in %s\n",block);
         if (pD->NGrid[1] == 0)
@@ -519,6 +523,11 @@ void init_mesh(MeshS *pM)
         par_seti(block,"NGrid_x1","%d",pD->NGrid[0],"x1 decomp");
         par_seti(block,"NGrid_x2","%d",pD->NGrid[1],"x2 decomp");
         par_seti(block,"NGrid_x3","%d",pD->NGrid[2],"x3 decomp");
+
+
+//        printf("Grids.... %d %d %d", pD->NGrid[0],pD->NGrid[1],pD->NGrid[2] ); getchar();
+
+
 
       } else {
         ath_error("[init_mesh] invalid AutoWithNProc=%d in %s\n",nproc,block);
@@ -559,6 +568,10 @@ void init_mesh(MeshS *pM)
       for(n=0; n<(pD->NGrid[2]); n++){
       for(m=0; m<(pD->NGrid[1]); m++){
       for(l=0; l<(pD->NGrid[0]); l++){
+
+    	  printf("Ngrid = %d  %d  %d \n",  (pD->NGrid[0]),(pD->NGrid[1]),(pD->NGrid[2]) );
+
+
         for (i=0; i<3; i++) pD->GData[n][m][l].Nx[i] = xdiv[i].quot;
         pD->GData[n][m][l].ID_Comm_world = next_procID++;
         if (next_procID > ((Nproc_Comm_world)-1)) next_procID=0;
@@ -633,6 +646,7 @@ void init_mesh(MeshS *pM)
  * MPI processes available (equal to one for single processor jobs) */ 
 
   if (next_procID != 0)
+
     ath_error("[init_mesh]:total # of Grids != total # of MPI procs\n");
 
 /*--- Step 7: Allocate a Grid for each Domain on this processor --------------*/
@@ -698,6 +712,8 @@ void init_mesh(MeshS *pM)
 
     ierr = MPI_Group_incl(world_group,Nranks,ranks,&(pD->Group_Domain));
     ierr = MPI_Comm_create(MPI_COMM_WORLD,pD->Group_Domain,&(pD->Comm_Domain));
+
+    printf("init_mesh %d \n", (int)(pD->Comm_Domain)); //getchar();
 
   }}
 

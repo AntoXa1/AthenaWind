@@ -136,6 +136,22 @@ Real x3cc(const GridS* pG, const int k)
 
 #ifdef XRAYS
 #ifndef PARTICLES
+int celli(const GridS* pG, const Real x, const Real dx1_1, int *i, Real *a)
+{
+  *a = (x - pG->MinX[0]) * dx1_1 + pG->is;
+  *i = (int)(*a);
+  if (((*a)-(*i)) < 0.5) return 0;	/* in the left half of the cell*/
+  else return 1;			/* in the right half of the cell*/
+}
+
+int cellj(const GridS* pG, const Real y, const Real dx2_1, int *j, Real *b)
+{
+  *b = (y - pG->MinX[1]) * dx2_1 + pG->js;
+  *j = (int)(*b);
+  if (((*b)-(*j)) < 0.5) return 0;	/* in the left half of the cell*/
+  else return 1;			/* in the right half of the cell*/
+}
+
 int cellk(const GridS* pG, const Real z, const Real dx3_1, int *k, Real *c)
 {
   *c = (z - pG->MinX[2]) * dx3_1 + pG->ks;

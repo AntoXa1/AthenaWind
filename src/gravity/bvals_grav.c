@@ -108,7 +108,7 @@ void bvals_grav(DomainS *pD)
     cnt = nghost*(pGrid->Nx[1])*(pGrid->Nx[2]);
 
 /* MPI blocks to both left and right */
-    if (pGrid->rx1_Gid >= 0 && pGrid->lx1_Gid >= 0) {
+    if (pGrid->rx1_Gid >= 0 && pGrid->lx1_Gid >= 0){
 
       /* Post non-blocking receives for data from L and R Grids */
       ierr = MPI_Irecv(&(recv_buf[0][0]),cnt,MPI_DOUBLE,pGrid->lx1_Gid,LtoR_tag,
