@@ -575,6 +575,10 @@ typedef Real (*CoolingFun_t)(const Real E, const Real d,
 			     const Real B1,const Real B2,const Real B3,
 			     const Real xi, const Real dt,
 			     int i, int j, int k);
+
+typedef Real (*RadiationPres_t) (ConsS ***U, const Real xi, const Real dt,
+			     int i, int j, int k); 
+
 #else
 	typedef Real (*CoolingFun_t)(const Real d, const Real p, const Real dt);
 #endif
