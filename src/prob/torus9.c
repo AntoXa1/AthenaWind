@@ -52,20 +52,18 @@ static void printProblemParameters();
 
 
 void calcGravitySolverParams(MeshS *pM, GridS *pG);
+void testSelfGravFourier( MeshS *pM, GridS *pG);
+
 float ellf(float phi, float ak);
 float rd(float x, float y, float z);
 float rf(float x, float y, float z);  
 
 //#ifdef XRAYS
 
- 
 
 void Constr_optDepthStack(MeshS *pM, GridS *pG);
-
 void Constr_optDepthStackOnGlobGrid(MeshS *pM, GridS *pG);
-
 void optDepthStack(MeshS *pM, GridS *pG);
-
 void optDepthStackOnGlobGrid(MeshS *pM, GridS *pG, int my_id);
 
 void ionizParam(const MeshS *pM, GridS *pG);
@@ -3903,7 +3901,6 @@ static void unPackGlobBufForGlobSync(MeshS *pM, GridS *pG, int *ext_id, int W2Do
     }
 }
 
-
 void freeGlobArrays()
 {
   free_1d_array(recv_rq);
@@ -3948,7 +3945,11 @@ int cellk_Glob(const MeshS *pM, const Real z, const Real dx3_1, int *k, Real *c,
 /*                                   GRAVITY SOLVER                                    */
 /* =================================================================================== */
 
+void testSelfGravFourier( MeshS *pM, GridS *pG){
 
+
+
+}
 
 void calcGravitySolverParams(MeshS *pM, GridS *pG){
 

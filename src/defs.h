@@ -20,7 +20,7 @@
  *  (user modified via configure) */
 
 /* Version identifier when configure was last run */
-#define CONFIGURE_DATE "Wed Oct 18 10:59:17 EDT 2017"
+#define CONFIGURE_DATE "Tue Nov 21 14:02:14 EST 2017"
 
 /* Problem generator with which Athena is compiled */
 #define A_PROBLEM "torus9"
@@ -45,7 +45,7 @@
 #define CYLINDRICAL
 
 /* Number of passively advected scalars */
-#define NSCALARS yes
+#define NSCALARS 0
 
 /* Self-gravity */
 #define NO_SELF_GRAVITY
