@@ -50,16 +50,22 @@ void aplot(MeshS *pM, int is, int js, int ks, int ie, int je, int ke, char name[
 static void calcProblemParameters();
 static void printProblemParameters();
 
-#ifdef XRAYS
-//void optDepthFunctions(MeshS *pM);
+
+void calcGravitySolverParams(MeshS *pM, GridS *pG);
+void testSelfGravFourier( MeshS *pM, GridS *pG);
+
+float ellf(float phi, float ak);
+float rd(float x, float y, float z);
+float rf(float x, float y, float z);  
+
+//#ifdef XRAYS
+
 
 void Constr_optDepthStack(MeshS *pM, GridS *pG);
-
 void Constr_optDepthStackOnGlobGrid(MeshS *pM, GridS *pG);
-
 void optDepthStack(MeshS *pM, GridS *pG);
-
 void optDepthStackOnGlobGrid(MeshS *pM, GridS *pG, int my_id);
+
 void ionizParam(const MeshS *pM, GridS *pG);
 void optDepthFunctions(GridS *pG);
 
@@ -72,11 +78,13 @@ Real updateEnergyFromXrayHeatCool(const Real E, const Real d,
 
 
 
-void xRayHeatCool(const Real dens, const Real Press, const Real xi_in, Real*, Real*,  const Real dt);
+void xRayHeatCool(const Real dens, const Real Press, const Real xi_in, Real*, Real*,
+		  const Real dt);
 
 
 Real rtsafe_energy_eq(Real, Real, Real, Real, int*);
-#endif
+
+//#endif
 
 // Input parameters
 static Real q, r0, r_in, rho0, e0, dcut, beta, seed, R_ib;
@@ -593,7 +601,7 @@ free(tmpCellIndexAndDisArray);
 //  getchar();
 }
 
-#ifdef XRAYS
+
 void Constr_optDepthStack(MeshS *pM, GridS *pG){
   // it is assumed that the source is located on the axis of symmetry
 
@@ -628,7 +636,7 @@ void Constr_optDepthStack(MeshS *pM, GridS *pG){
 int  mpi1=1;
 // while( mpi1==1 );
 
-#endif
+
 
   is = pG->is;
   ie = pG->ie;
@@ -1110,6 +1118,90 @@ void optDepthFunctions(GridS *pG){
 
 }
 
+GradVeloc()
+{
+
+}
+
+#ifdef CAK_FORCE
+Real CAK_RadPresLines(ConsS ***U, GridS *pG, const Real xi,
+		      const Real dx1,  const Real dx2,  const Real dx3,		      
+		      const Real dt, int i, int j, int k)
+{
+  Real eta_max, Mt_max, Press, Pnew, Tg, k1=0.03,vth,t, dvdx[3];
+  const Real A=1, alp = ;
+  
+  Real d = U[k][j][i].d;
+  Real di = 1./d, Ujik;
+
+  Ujik = U[k][j][i].M1/U[k][j][i].d
+  
+  dvdx[0] = (U[k][j][i+1].M1/U[k][j][i+1].d - Ujik)/dx1;
+  
+  dvdx[1] = (U[k][j+1][i].M1/U[k][j+1][i].d - Ujik)/dx2;
+
+  dvdx[2] = (U[k+1][j][i].M1/U[k+1][j][i].d - Ujik)/dx3;
+
+  
+  
+  Press = U[k][j][i].E -  0.5*(SQR(U[k][j][i].M1) + SQR(U[k][j][i].M2) + SQR(U[k][j][i].M3))*di;
+  
+  Press -=  0.5*(SQR(U[k][j][i].B1c) + SQR(U[k][j][i].B2c) + SQR(U[k][j][i].B3c));
+  
+  Press *=  Gamma_1;
+  
+  Tg =  Pnew * Esc * M_MW / (U[k][j][i].d*Dsc*RGAS );
+
+  vth=(12.85e+5)*sqrt(Tg /1.e4/A);
+
+  /* vxl = ML*di; */
+  /* vxr = MR*di;   */
+    
+  k1 = 0.03 + 0.385*exp(-1.4* pow(xi,0.6));
+
+  if ( xi < 3.16){
+    eta_max= pow(10., 6.9 * exp( 0.16*pow(xi, 0.4) ) );
+  }
+  else { 
+    eta_max= pow(10., 9.1 * exp(-7.96e-3 * xi) );
+  }
+  
+  // taumax=t * eta_max
+
+  Mt_max=(1. - alp ) * k1 * pow(eta_max, alp);
+
+  dvdx1 = dvdx1 *Usc/Rsc;
+
+  ro=d *MP;
+  
+  t=k1 * KPE * vth * ro  / max(dvdx1, tiny);
+
+
+    kk = ( (1.+taumax)**(1.- alp)-1.)/taumax**(1.-alp)
+
+    Mt=k1*kk * t**(-alp)
+
+    if (Mt > Mt_max) Mt=Mt_max
+		       //	  k1=0.03
+
+    //	  rij = (/ grid1% x1a(i), grid1% x2a(j) /)
+
+	  rsph =sqrt ( dot_product( rij, rij)  )
+
+	  grdv = (/ (v1(i,j,ks) - v1(i-1,j, ks) ) * dx1bi(i),
+		  (v2(i,j,ks) - v2(i,j-1,ks) ) * dx2bi(j) /)
+
+	  dvdx1 = dvdx1 *Usc/Rsc
+
+	  Tg = gas1%Tg(i,j)
+	 
+	  ndens=max( gas1% dns(i, j), tiny)*nc0
+
+	  ro=ndens*mp
+      
+}
+#endif /* CAK_FORCE */
+
 
 Real updateEnergyFromXrayHeatCool(const Real E, const Real d,
 				  const Real M1,const Real M2, const Real M3,
@@ -1202,7 +1294,6 @@ Real updateEnergyFromXrayHeatCool(const Real E, const Real d,
   if(Pnew <= 0. ) Hx = 0.;
 
   //		 printf("negative pressure detected");
-
 
   //	 Hx = (abs(Hx)>0.0001 ) ?  copysign(0.0001, Hx) : Hx;
   //	 printf( " %e %e \n", Press, Pnew );
@@ -1393,6 +1484,7 @@ void plot(MeshS *pM, char name[16]){
 }
 
 #ifdef XRAYS
+
 void aplot(MeshS *pM, int is, int js, int ks, int ie, int je, int ke, char name[16]){
   
   int i,j,k,nx1,nx2,nx3,il, jl, kl, iu, ju, ku;
@@ -1555,9 +1647,11 @@ void problem(MeshS *pM, DomainS *pDomain)
   GridS *pG=(pDomain->Grid);
 
 #ifdef XRAYS
-  CoolingFunc = updateEnergyFromXrayHeatCool;
+  CoolingFunc = updateEnergyFromXrayHeatCool; 
 #endif
-
+#ifdef CAK_FORCE
+ RadiationPresLines = CAK_RadPresLines;
+#endif
 
   int i,j,k;
   int is,ie,js,je,ks,ke,nx1,nx2,nx3;
@@ -2025,13 +2119,14 @@ void problem(MeshS *pM, DomainS *pDomain)
   SyncGridGlob(pM, &pDomain, pG, ID_TAU);
 
 
-  
-     //  aplot(pM, 0,0,0, pM->Nx[0]-1, pM->Nx[1]-1, pM->Nx[2]-1, "tau");
- 
-    
+     
   ionizParam(pM, pG);
+
+  calcGravitySolverParams(pM, pG);
   
-#else  /* not parallel *cd/
+  aplot(pM, 0,0,0, pM->Nx[0]-1, pM->Nx[1]-1, pM->Nx[2]-1, "tau");
+  
+#else  /* NOT PARALLEL *cd/
 
     /* printf("  pM->RootMinX[0] = %f \n\n", pM->RootMinX[0] ); */
 
@@ -2044,8 +2139,12 @@ void problem(MeshS *pM, DomainS *pDomain)
     /* aplot(pM, 0,0,0, pM->Nx[0]-1, pM->Nx[1]-1, pM->Nx[2]-1, "tau"); */
  
     ionizParam(pM, pG);
-        
-    /* plot(pM, "xi"); */
+
+
+       
+
+    
+
   
     /* Constr_optDepthStack(pM, pG);     */
     /* optDepthStack(pM, pG); */
@@ -2218,11 +2317,12 @@ void Userwork_in_loop (MeshS *pM)
 
   ionizParam(pM, pG);
 
-  /* if (my_id == 1 ) { */
+  /* if (my_id == 0 ) { */
   /*   aplot(pM, 0,0,0, pM->Nx[0]-1, pM->Nx[1]-1, pM->Nx[2]-1, "tau"); */
   /*   aplot(pM, 0,0,0, pM->Nx[0]-1, pM->Nx[1]-1, pM->Nx[2]-1, "ro");     */
   /* } */
    
+  aplot(pM, 0,0,0, pM->Nx[0]-1, pM->Nx[1]-1, pM->Nx[2]-1, "tau");
   
 #else
 
@@ -2231,7 +2331,7 @@ void Userwork_in_loop (MeshS *pM)
 
    ionizParam(pM, pG);
   
- /* aplot(pM, 0,0,0, pM->Nx[0]-1, pM->Nx[1]-1, pM->Nx[2]-1, "tau"); */
+ 
  /* plot(pM, "xi"); */
 
    /* optDepthStack(pM, pG); */
@@ -2938,7 +3038,6 @@ void testRayTracings( MeshS *pM, GridS *pG){
     /* get a non-normalized direction in cyl coordinates */
     //cartVectorToCylVector(cyl_norm, cart_norm, cos(rtz_pos[1]),sin(rtz_pos[1]));
     //printf("\n %f %f \n", cyl_norm[1], res[1]);
-    
     // cartVectorToCylVector(cyl_norm, cart_norm, cos(rtz_pos[1]),sin(rtz_pos[1]));
     
     
@@ -2972,167 +3071,168 @@ void testRayTracings( MeshS *pM, GridS *pG){
 #endif  /* testray1 */
 
 void traceGridCellOnGlobGrid(MeshS *pM,GridS *pG, Real *res, int *ijk_cur, Real *xyz_pos,
-		   Real* rtz_pos, const Real *cart_norm, const Real *cyl_norm,			    
-		   short* nroot) {
+			     Real* rtz_pos, const Real *cart_norm, const Real *cyl_norm,			    
+			     short* nroot ) {
   /* ijk_cur is the 3d index of the current cell */
   /*  xpos is the (x,y,z) exact cart. position, should be located at one of the cell's boundaries; */
   /*  x1x2x3 is the 3d - r,t,z -center coordinates of the cell to which the 
       above boundaries belong */
   // traces a cingle cell; cnorm is in Cart. coordinates;
 
-  int change_indx, icur, jcur, kcur, crosPhiConstPlanes=0;
+  short crosPhiConstPlanes =0;
+  int change_indx, icur, jcur, kcur;
 
   Real a,b,c, rfc, zfc, d,tfc,sint,cost,
     L=HUGE_NUMBER, L1=HUGE_NUMBER, L2=HUGE_NUMBER,
-     xcur, ycur, zcur, one_over_a;
-     int is,ie,js,je,ks,ke;
-     *nroot=0;
+    xcur, ycur, zcur, one_over_a;
+  int is,ie,js,je,ks,ke;
+  *nroot=0;
      
-     is = 0;
-     ie = pM->Nx[0]-1;     
-     js = 0;
-     je = pM->Nx[1]-1;       
-     ks = 0;
-     ke = pM->Nx[2]-1;
+  is = 0;
+  ie = pM->Nx[0]-1;     
+  js = 0;
+  je = pM->Nx[1]-1;       
+  ks = 0;
+  ke = pM->Nx[2]-1;
   
-     icur= ijk_cur[0]; /* --- icur etc. are on cyl. grid ----*/
-     jcur= ijk_cur[1];
-     kcur= ijk_cur[2];
+  icur= ijk_cur[0]; /* --- icur etc. are on cyl. grid ----*/
+  jcur= ijk_cur[1];
+  kcur= ijk_cur[2];
 
-     xcur = xyz_pos[0];   /*  are on Cart. grid */
-     ycur=  xyz_pos[1];
-     zcur=  xyz_pos[2];
+  xcur = xyz_pos[0];   /*  are on Cart. grid */
+  ycur=  xyz_pos[1];
+  zcur=  xyz_pos[2];
 
 
-      /*  1)  intersection with cylinders  */     
+  /*  1)  intersection with cylinders  */     
      
-     if(cyl_norm[0]>0){       
-       rfc = pM->RootMinX[0] + ((Real)(icur - is)+1.)*pG->dx1;
-     }
-     else if (cyl_norm[0]<0.){
-       rfc = pM->RootMinX[0] + ((Real)(icur -  is))*pG->dx1;
-     }
-       else{ /* nr==0: almost never happens*/
+  if(cyl_norm[0]>0){       
+    rfc = pM->RootMinX[0] + ((Real)(icur - is)+1.)*pG->dx1;
+  }
+  else if (cyl_norm[0]<0.){
+    rfc = pM->RootMinX[0] + ((Real)(icur -  is))*pG->dx1;
+  }
+  else{ /* nr==0: almost never happens*/
 
-	   goto z_planes;
-     }
-     change_indx = 0;
+    goto z_planes;
+  }
+  change_indx = 0;
        
-     a = pow(cart_norm[0],2) + pow(cart_norm[1],2);
-     b = 2.*(xyz_pos[0]*cart_norm[0]+xyz_pos[1]*cart_norm[1]); 
-     c = pow(xyz_pos[0],2)  + pow(xyz_pos[1],2) - pow(rfc,2);
-     d = pow(b,2)-4.*a*c;
+  a = pow(cart_norm[0],2) + pow(cart_norm[1],2);
+  b = 2.*(xyz_pos[0]*cart_norm[0]+xyz_pos[1]*cart_norm[1]); 
+  c = pow(xyz_pos[0],2)  + pow(xyz_pos[1],2) - pow(rfc,2);
+  d = pow(b,2)-4.*a*c;
 
-     if (d<0){ /* possibly at a grazing angle to a cylinder */
+  if (d<0){ /* possibly at a grazing angle to a cylinder */
 
-   #ifdef DEBUG_traceGridCell
-    	 printf("Discr<0. in traceACell\n");
-   #endif
-       goto z_planes;
-     }
+#ifdef DEBUG_traceGridCell
+    printf("Discr<0. in traceACell\n");
+#endif
+    goto z_planes;
+  }
 
-      one_over_a =copysign(1./fmax(fabs(a), tiny), a);
-      L1 = fabs(-b+sqrt(d))/2.*one_over_a;
-      L2 = fabs(-b-sqrt(d))/2.*one_over_a;
-      L = fmin(fabs(L1),fabs(L2));
-      nroot++; 
-	#ifdef DEBUG_traceGridCell
-      printf("Lr= %f nr= %f \n", L, cyl_norm[0]);
-	#endif
-//      goto lab1;
+  one_over_a =copysign(1./fmax(fabs(a), tiny), a);
+  L1 = fabs(-b+sqrt(d))/2.*one_over_a;
+  L2 = fabs(-b-sqrt(d))/2.*one_over_a;
+  L = fmin(fabs(L1),fabs(L2));
+  nroot++; 
+#ifdef DEBUG_traceGridCell
+  printf("Lr= %f nr= %f \n", L, cyl_norm[0]);
+#endif
+  //      goto lab1;
 
-      /*  2)  intersection with planes z_k=const  */
-    z_planes:
-      if(cyl_norm[2]>0){
-	zfc = pM->RootMinX[2] + ((Real)(kcur - ks) +1.)*pG->dx3;
-      }
-      else if (cyl_norm[2]<0.){
-	zfc = pM->RootMinX[2] + ((Real)(kcur - ks))*pG->dx3;	
-      }
-      else{  /* nz==0 */
-	goto phi_planes;	 
-      }
-      L1 = fabs( (zfc - xyz_pos[2])/cart_norm[2]);
+  /*  2)  intersection with planes z_k=const  */
+ z_planes:
+  if(cyl_norm[2]>0){
+    zfc = pM->RootMinX[2] + ((Real)(kcur - ks) +1.)*pG->dx3;
+  }
+  else if (cyl_norm[2]<0.){
+    zfc = pM->RootMinX[2] + ((Real)(kcur - ks))*pG->dx3;	
+  }
+  else{  /* nz==0 */
+    goto phi_planes;	 
+  }
+  L1 = fabs( (zfc - xyz_pos[2])/cart_norm[2]);
 
      
 
-      if (L1 <= L){ /*min of Lr or Lz */
-       change_indx = 2;
-       L=L1;
-       nroot++;
+  if (L1 <= L){ /*min of Lr or Lz */
+    change_indx = 2;
+    L=L1;
+    nroot++;
 
-	#ifdef DEBUG_traceGridCell
-       printf("Lz= %f , nz= %f \n", L1, cyl_norm[2]);
-	#endif
-      }
+#ifdef DEBUG_traceGridCell
+    printf("Lz= %f , nz= %f \n", L1, cyl_norm[2]);
+#endif
+  }
    
 
 
 
-      /*  3)  intersection with planes phi_j=const */
-    phi_planes:
+  /*  3)  intersection with planes phi_j=const */
+ phi_planes:
 
-	if( crosPhiConstPlanes == 1){
+  if( crosPhiConstPlanes == 1){
 
-	  if(cyl_norm[1]>0){
-       tfc = pM->RootMinX[1] + ((Real)(jcur - js)+1)*pG->dx2;
-      }
-      else if(cyl_norm[1]<0.){
-       tfc = pM->RootMinX[1] + ((Real)(jcur - js))*pG->dx2;
-      }
-      else{
-      	return;
-      }
-      sint = sin(tfc);
-      cost = cos(tfc);
-      d = cart_norm[1]*cost - cart_norm[0]*sint;
+    if(cyl_norm[1]>0){
+      tfc = pM->RootMinX[1] + ((Real)(jcur - js)+1)*pG->dx2;
+    }
+    else if(cyl_norm[1]<0.){
+      tfc = pM->RootMinX[1] + ((Real)(jcur - js))*pG->dx2;
+    }
+    else{
+      return;
+    }
+    sint = sin(tfc);
+    cost = cos(tfc);
+    d = cart_norm[1]*cost - cart_norm[0]*sint;
       
-      if(d != 0.){
-      	L1  = fabs((xyz_pos[0]*sint -xyz_pos[1]*cost)/d);
-      	if (L1 < L){ /*min of Lr or Lz */
-      	  change_indx = 1;
-      	  L=L1;
-          nroot++;	  
-	#ifdef DEBUG_traceGridCell
-	  printf("Lt= %f \n", L1);
-	#endif
-      	}
+    if(d != 0.){
+      L1  = fabs((xyz_pos[0]*sint -xyz_pos[1]*cost)/d);
+      if (L1 < L){ /*min of Lr or Lz */
+	change_indx = 1;
+	L=L1;
+	nroot++;	  
+#ifdef DEBUG_traceGridCell
+	printf("Lt= %f \n", L1);
+#endif
       }
-	}
+    }
+  }
 
-//lab1:
-	  res[0] = L;
+  //lab1:
+  res[0] = L;
 
-      xyz_pos[0] += cart_norm[0]*L; 
-      xyz_pos[1] += cart_norm[1]*L;
-      xyz_pos[2] += cart_norm[2]*L;
+  xyz_pos[0] += cart_norm[0]*L; 
+  xyz_pos[1] += cart_norm[1]*L;
+  xyz_pos[2] += cart_norm[2]*L;
 
    
-      //      if (ijk_cur[change_indx] < ijk_bnd[change_indx][INDS]) ijk_cur[change_indx] = 
-      ijk_cur[change_indx] += (int)copysign(1, cyl_norm[change_indx]);
+  //      if (ijk_cur[change_indx] < ijk_bnd[change_indx][INDS]) ijk_cur[change_indx] = 
+  ijk_cur[change_indx] += (int)copysign(1, cyl_norm[change_indx]);
       
-      if(change_indx==1){
-	if (ijk_cur[1] < js) ijk_cur[1]=je; /* periodic */
-	if (ijk_cur[1] > je) ijk_cur[1]=js;
-      }
+  if(change_indx==1){
+    if (ijk_cur[1] < js) ijk_cur[1]=je; /* periodic */
+    if (ijk_cur[1] > je) ijk_cur[1]=js;
+  }
 
-      if(change_indx==0){
-      	  if (ijk_cur[0] < is) ijk_cur[1]=is;
-      	  if (ijk_cur[0] > ie) ijk_cur[1]=je;
-      }
+  if(change_indx==0){
+    if (ijk_cur[0] < is) ijk_cur[1]=is;
+    if (ijk_cur[0] > ie) ijk_cur[1]=je;
+  }
 	
-      if(change_indx==2){
-      	  if (ijk_cur[2] < ks) ijk_cur[2]=ks;
-      	  if (ijk_cur[2] > ke) ijk_cur[2]=ke;
-      }
+  if(change_indx==2){
+    if (ijk_cur[2] < ks) ijk_cur[2]=ks;
+    if (ijk_cur[2] > ke) ijk_cur[2]=ke;
+  }
 	
 
       
 	
       
-	#ifdef DEBUG_traceGridCell
-      printf(" === end  traceCell === \n");
-	#endif
+#ifdef DEBUG_traceGridCell
+  printf(" === end  traceCell === \n");
+#endif
 } //end  traceCell
 
 
@@ -3801,7 +3901,6 @@ static void unPackGlobBufForGlobSync(MeshS *pM, GridS *pG, int *ext_id, int W2Do
     }
 }
 
-
 void freeGlobArrays()
 {
   free_1d_array(recv_rq);
@@ -3825,7 +3924,7 @@ int celli_Glob(const MeshS *pM, const Real x, const Real dx1_1, int *i, Real *a,
   else return 1;			/* in the right half of the cell*/
 }
 
-int cellj_Glob(const MeshS *pM, const Real y, const Real dx2_1, int *j, Real *b,const Real js)
+int cellj_Glob(const MeshS *pM, const Real y, const Real dx2_1, int *j, Real *b, const Real js)
 {
   *b = (y - pM->RootMinX[1]) * dx2_1 + js;
   *j = (int)(*b);
@@ -3842,7 +3941,159 @@ int cellk_Glob(const MeshS *pM, const Real z, const Real dx3_1, int *k, Real *c,
 }
 
 
+/* =================================================================================== */
+/*                                   GRAVITY SOLVER                                    */
+/* =================================================================================== */
+
+void testSelfGravFourier( MeshS *pM, GridS *pG){
 
 
+
+}
+
+void calcGravitySolverParams(MeshS *pM, GridS *pG){
+
+  Real res;
+
+  
+    
+  res = rf(0.1, 0.1, 0.1);
+
+
+  printf("calcGravitySolverParams %f \n", res);
+  
+  apause();
+  
+}
+
+void gravPotAtBndry(MeshS *pM, GridS *pG){
+  /* calculate grav pot at the boundary */
+
+
+}
+
+
+
+#include <math.h>
+//#include "nrutil.h"
+#define ERRTOL 0.08
+#define TINY 1.5e-38
+#define BIG 3.0e37
+#define THIRD (1.0/3.0)
+#define C1 (1.0/24.0)
+#define C2 0.1
+#define C3 (3.0/44.0)
+#define C4 (1.0/14.0)
+
+float rf(float x, float y, float z)
+  /* Special Functions */
+  /* Computes Carlson’S elliptic integral of the first */
+  /* kind, RF (x, y, z). x, y, and z must be nonneg- ative,
+    and at most one can be zero. */
+  /* TINY must be at least 5 times the machine underflow */
+  /* limit, BIG at most one fifth the machine overflow limit. */
+{
+
+  float alamb,ave,delx,dely,delz,e2,e3,sqrtx,sqrty,sqrtz,xt,yt,zt;
+
+ if (fmin(fmin(x,y),z) < 0.0 || fmin(fmin(x+y,x+z),y+z) < TINY
+     || fmax(fmax(x,y),z) > BIG)
+
+   ath_error("invalid arguments in rf"); xt=x;
+   yt=y;
+   zt=z;
+
+ do {
+   sqrtx=sqrt(xt);
+   sqrty=sqrt(yt);
+   sqrtz=sqrt(zt);
+   alamb=sqrtx*(sqrty+sqrtz)+sqrty*sqrtz;
+   xt=0.25*(xt+alamb);
+   yt=0.25*(yt+alamb);
+   zt=0.25*(zt+alamb);
+   ave=THIRD*(xt+yt+zt);
+   delx=(ave-xt)/ave;
+   dely=(ave-yt)/ave;
+   delz=(ave-zt)/ave;
+ }
+
+ while (fmax(fmax(fabs(delx),fabs(dely)),fabs(delz)) > ERRTOL);
+ e2=delx*dely-delz*delz;
+ e3=delx*dely*delz;
+ return (1.0+(C1*e2-C2-C3*e3)*e2+C4*e3)/sqrt(ave);
+}
+
+#undef ERRTOL 
+#undef TINY 
+#undef BIG 
+#undef THIRD 
+#undef C1 
+#undef C2
+#undef C3
+#undef C4
+
+
+#include <math.h>
+//#include "nrutil.h"
+#define ERRTOL 0.05
+#define TINY 1.0e-25
+#define BIG 4.5e21
+#define C1 (3.0/14.0)
+#define C2 (1.0/6.0)
+#define C3 (9.0/22.0)
+#define C4 (3.0/26.0)
+#define C5 (0.25*C3)
+#define C6 (1.5*C4)
+
+float rd(float x, float y, float z)
+  /* Computes Carlson’s elliptic integral of the second kind, RD(x,y,z). */
+  /* x and y must be non- negative, and at most one can be zero. z */
+  /* must be positive. TINY must be at least twice the negative 2/3 power */
+  /* of the machine overflow limit. BIG must be at most 0.1 × ERRTOL */
+  /* times the negative 2/3 power of the machine underflow limit. */
+{
+  float alamb,ave,delx,dely,delz,ea,eb,ec,ed,ee,fac,sqrtx,sqrty,
+    sqrtz,sum,xt,yt,zt;
+  if (fmin(x,y) < 0.0 || fmin(x+y,z) < TINY || fmax(fmax(x,y),z) > BIG)
+    ath_error("invalid arguments in rd");
+  xt=x;
+  yt=y;
+  zt=z;
+  sum=0.0;
+  fac=1.0;
+  do {
+    sqrtx=sqrt(xt);
+    sqrty=sqrt(yt);
+    sqrtz=sqrt(zt);
+    alamb=sqrtx*(sqrty+sqrtz)+sqrty*sqrtz;
+    sum += fac/(sqrtz*(zt+alamb)); fac=0.25*fac;
+    xt=0.25*(xt+alamb);
+    yt=0.25*(yt+alamb);
+    zt=0.25*(zt+alamb);
+    ave=0.2*(xt+yt+3.0*zt);
+    delx=(ave-xt)/ave;
+    dely=(ave-yt)/ave;
+    delz=(ave-zt)/ave;
+  } while (fmax(fmax(fabs(delx),fabs(dely)),fabs(delz)) > ERRTOL);
+  ea=delx*dely;
+  eb=delz*delz;
+  ec=ea-eb;
+  ed=ea-6.0*eb;
+  ee=ed+ec+ec;
+  return 3.0*sum+fac*(1.0+ed*(-C1+C5*ed-C6*delz*ee)
+		      +delz*(C2*ee+delz*(-C3*ec+delz*C4*ea)))/(ave*sqrt(ave));
+}
+
+
+
+float ellf(float phi, float ak)
+/* Legendre elliptic integral of the 1st kind F (φ, k), */
+/*   evaluated using Carlson’s function RF . */
+/*   The argument ranges are 0 ≤ φ ≤ π/2, 0 ≤ ksinφ ≤ 1. */
+{
+  float rf(float x, float y, float z); float s;
+  s=sin(phi);
+  return s*rf(SQR(cos(phi)),(1.0-s*ak)*(1.0+s*ak),1.0);
+}
 
 

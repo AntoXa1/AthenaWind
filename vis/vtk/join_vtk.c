@@ -263,7 +263,7 @@ static void init_domain_1d(void){
     strip_trail_white(line);
     if(strcmp(line,"DATASET STRUCTURED_POINTS") != 0)
       join_error("Unsupported file type: %s",line);
-
+mhdTorus.0107.all.vt
     /* I'm assuming from this point on that the header is in good shape */
 
     /* Dimensions */
@@ -536,7 +536,7 @@ static void write_joined_vtk(const char *out_name){
   oz = domain_3d[0][0][0].oz;
 
   /* Initialize dx, dy, dz */
-  dx = domain_3d[0][0][0].dx;
+mhdTorus.0107.all.vtk.tar.gz  dx = domain_3d[0][0][0].dx;
   dy = domain_3d[0][0][0].dy;
   dz = domain_3d[0][0][0].dz;
 

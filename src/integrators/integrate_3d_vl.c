@@ -647,6 +647,27 @@ void integrate_3d_vl(DomainS *pD)
 #endif
 #endif /* CYLINDRICAL */
           Uhalf[k][j][i].M1 -= hdt*pG->U[k][j][i].d*g;
+
+
+#ifdef CAK_FORCE
+
+/* update M1 due to rad force, dv/dr */
+/* Castor Abbott & Klein radiation pres in Sobolev apprx. */
+
+	  radPres3D = (*(RadiationPres)(Uhalf, pG->xi[k][j][i],
+					pG->dx1, pG->dx2, pG->dx3,
+					hdt, i, j, k );
+
+		      /* Uhalf[k][j][i].E, Uhalf[k][j][i].d, */
+		      /* Uhalf[k][j][i].M1, Uhalf[k][j][i].M2, Uhalf[k][j][i].M3, */
+		      /* Uhalf[k][j][i].B1c, Uhalf[k][j][i].B2c, Uhalf[k][j][i].B3c, */
+				 
+	  Uhalf[k][j][i].M1 -= hdt*pG->U[k][j][i].d * radPres3D[0];
+#endif
+	  
+
+
+	    
 #ifndef BAROTROPIC
           Uhalf[k][j][i].E -= q1*(lsf*x1Flux[k][j][i  ].d*(phic - phil)
                                 + rsf*x1Flux[k][j][i+1].d*(phir - phic));
@@ -655,6 +676,13 @@ void integrate_3d_vl(DomainS *pD)
           phil = (*StaticGravPot)(x1,(x2-0.5*pG->dx2),x3);
 
           Uhalf[k][j][i].M2 -= q2*(phir-phil)*pG->U[k][j][i].d;
+		       
+#ifdef CAK_FORCE
+	  /* update M2 due to rad force dv/dr *e2 */		       
+	  Uhalf[k][j][i].M2  -=  hdt*pG->U[k][j][i].d * radPres3D[1];
+#endif
+
+		       
 #ifndef BAROTROPIC
           Uhalf[k][j][i].E -= q2*(x2Flux[k][j  ][i].d*(phic - phil)
                                 + x2Flux[k][j+1][i].d*(phir - phic));
@@ -662,12 +690,21 @@ void integrate_3d_vl(DomainS *pD)
           phir = (*StaticGravPot)(x1,x2,(x3+0.5*pG->dx3));
           phil = (*StaticGravPot)(x1,x2,(x3-0.5*pG->dx3));
 
-          Uhalf[k][j][i].M3 -= q3*(phir-phil)*pG->U[k][j][i].d;
+	  Uhalf[k][j][i].M3 -= q3*(phir-phil)*pG->U[k][j][i].d;
+
+#ifdef CAK_FORCE
+	  /* update M3 due to rad force dv/dr *e2 */
+	  Uhalf[k][j][i].M3  -=  hdt*pG->U[k][j][i].d * radPres3D[2];
+#endif
+
+		       
 #ifndef BAROTROPIC
           Uhalf[k][j][i].E -= q3*(x3Flux[k  ][j][i].d*(phic - phil)
                                 + x3Flux[k+1][j][i].d*(phir - phic));
 #endif
 
+ 
+	  
 #ifdef XRAYS
 
 	  //printf(" xiin %e \n", &(pG->xi[k][j][i]));
@@ -675,6 +712,14 @@ void integrate_3d_vl(DomainS *pD)
 	  
 	  //coolf=0;
 
+	 
+
+
+	   
+
+
+
+	  
 #ifdef XCOOLING
 	  
 	  coolf = (*CoolingFunc)(Uhalf[k][j][i].E, Uhalf[k][j][i].d,
