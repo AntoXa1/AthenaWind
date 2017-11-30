@@ -1,4 +1,4 @@
-#include "copyright.h"
+v#include "copyright.h"
 /*============================================================================*/
 /*! \file hkdisk.c
  *  \brief Problem generator for Hawley Krolik disk (Specifically, GT4)
