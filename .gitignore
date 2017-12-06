@@ -4,6 +4,18 @@
 **/*.o
 **/*.obj
 */.*
+**/*.log
+
+
+**/*.config
+**/*.status
+
+/bin/id[0-9]
+/bin/*put
+
+
+**/Makeoptions
+**/Makefile
 
 
 **/Makedepend
